@@ -1,0 +1,23 @@
+{
+  "name": "jeap-jwe-client",
+  "version": "0.1.0",
+  "description": "Angular client library for transparent JWE request and response protection with jEAP backends.",
+  "keywords": [
+    "angular",
+    "jwe",
+    "jose",
+    "encryption",
+    "http-interceptor",
+    "jeap"
+  ],
+  "peerDependencies": {
+    "@angular/common": ">=20.0.0 <23.0.0",
+    "@angular/core": ">=20.0.0 <23.0.0",
+    "rxjs": "^7.4.0"
+  },
+  "dependencies": {
+    "jose": "6.2.2",
+    "tslib": "^2.3.0"
+  },
+  "sideEffects": false
+}

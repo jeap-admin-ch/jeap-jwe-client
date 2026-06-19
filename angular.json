@@ -1,0 +1,40 @@
+{
+  "$schema": "./node_modules/@angular/cli/lib/config/schema.json",
+  "version": 1,
+  "newProjectRoot": "projects",
+  "projects": {
+    "jeap-jwe-client": {
+      "projectType": "library",
+      "root": "projects/jeap-jwe-client",
+      "sourceRoot": "projects/jeap-jwe-client/src",
+      "prefix": "lib",
+      "architect": {
+        "build": {
+          "builder": "@angular-devkit/build-angular:ng-packagr",
+          "options": {
+            "project": "projects/jeap-jwe-client/ng-package.json"
+          },
+          "configurations": {
+            "production": {
+              "tsConfig": "projects/jeap-jwe-client/tsconfig.lib.prod.json"
+            },
+            "development": {
+              "tsConfig": "projects/jeap-jwe-client/tsconfig.lib.json"
+            }
+          },
+          "defaultConfiguration": "production"
+        },
+        "test": {
+          "builder": "@angular/build:karma",
+          "options": {
+            "tsConfig": "projects/jeap-jwe-client/tsconfig.spec.json",
+            "polyfills": [
+              "zone.js",
+              "zone.js/testing"
+            ]
+          }
+        }
+      }
+    }
+  }
+}

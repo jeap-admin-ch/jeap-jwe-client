@@ -1,0 +1,42 @@
+{
+  "name": "jeap-jwe-client-workspace",
+  "version": "0.0.0",
+  "scripts": {
+    "ng": "ng",
+    "build": "ng build jeap-jwe-client",
+    "build:lib": "ng build jeap-jwe-client",
+    "test": "ng test jeap-jwe-client --watch=false",
+    "test:watch": "ng test jeap-jwe-client",
+    "pack:lib": "cd dist/jeap-jwe-client && npm pack",
+    "publish:lib:dry-run": "cd dist/jeap-jwe-client && npm publish --dry-run",
+    "publish:lib": "cd dist/jeap-jwe-client && npm publish"
+  },
+  "private": true,
+  "dependencies": {
+    "@angular/animations": "22.0.2",
+    "@angular/common": "22.0.2",
+    "@angular/compiler": "22.0.2",
+    "@angular/core": "22.0.2",
+    "@angular/forms": "22.0.2",
+    "@angular/platform-browser": "22.0.2",
+    "@angular/router": "22.0.2",
+    "jose": "6.2.2",
+    "rxjs": "^7.8.0",
+    "tslib": "^2.3.0",
+    "zone.js": "~0.15.0"
+  },
+  "devDependencies": {
+    "@angular-devkit/build-angular": "22.0.2",
+    "@angular/cli": "22.0.2",
+    "@angular/compiler-cli": "22.0.2",
+    "@types/jasmine": "~6.0.0",
+    "jasmine-core": "~6.2.0",
+    "karma": "~6.4.0",
+    "karma-chrome-launcher": "~3.2.0",
+    "karma-coverage": "~2.2.0",
+    "karma-jasmine": "~5.1.0",
+    "karma-jasmine-html-reporter": "~2.2.0",
+    "ng-packagr": "^22.0.0",
+    "typescript": "~6.0.0"
+  }
+}
