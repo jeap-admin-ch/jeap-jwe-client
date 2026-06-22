@@ -2,15 +2,221 @@ name: Library CI
 
 on:
   pull_request:
-    branches:
-      - main
 
   push:
-    branches:
-      - main
+
+permissions:
+  contents: write
+
+concurrency:
+  group: library-ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  NODE_VERSION: '22.22.3'
+  LIBRARY_PROJECT: jeap-jwe-client
+  LIBRARY_ROOT: projects/jeap-jwe-client
+  LIBRARY_DIST: dist/jeap-jwe-client
 
 jobs:
-  test:
+  license:
+    name: Update third-party licenses
     runs-on: ubuntu-latest
+
+    outputs:
+      updated: ${{ steps.update-license.outputs.updated }}
+
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout repository
+        uses: actions/checkout@v5
+        with:
+          ref: ${{ github.head_ref || github.ref_name }}
+          token: ${{ secrets.CI_PUSH_TOKEN || github.token }}
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v5
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Generate THIRD-PARTY-LICENSES.md
+        run: |
+          npx --yes license-checker-rseidelsohn \
+            --markdown \
+            --out "${LIBRARY_ROOT}/THIRD-PARTY-LICENSES.md"
+
+      - name: Commit updated THIRD-PARTY-LICENSES.md
+        id: update-license
+        run: |
+          if [ -z "$(git status --porcelain -- "${LIBRARY_ROOT}/THIRD-PARTY-LICENSES.md")" ]; then
+            echo "THIRD-PARTY-LICENSES.md is already up to date."
+            echo "updated=false" >> "${GITHUB_OUTPUT}"
+            exit 0
+          fi
+
+          if [ "${{ github.event_name }}" = "pull_request" ] && [ "${{ github.event.pull_request.head.repo.full_name }}" != "${{ github.repository }}" ]; then
+            echo "THIRD-PARTY-LICENSES.md is outdated, but this pull request comes from a fork."
+            echo "The workflow cannot push changes to fork branches with GITHUB_TOKEN."
+            echo "Please run this locally and commit the result:"
+            echo "npx --yes license-checker-rseidelsohn --markdown --out ${LIBRARY_ROOT}/THIRD-PARTY-LICENSES.md"
+            exit 1
+          fi
+
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
+          git add "${LIBRARY_ROOT}/THIRD-PARTY-LICENSES.md"
+          git commit -m "Update third-party licenses"
+          git push
+
+          echo "THIRD-PARTY-LICENSES.md was updated and pushed."
+          echo "updated=true" >> "${GITHUB_OUTPUT}"
+
+  compatibility:
+    name: Angular ${{ matrix.angular-major }} compatibility
+    runs-on: ubuntu-latest
+    needs:
+      - license
+    if: needs.license.outputs.updated != 'true'
+
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - angular-major: '20'
+            typescript-version: '~5.9.0'
+          - angular-major: '21'
+            typescript-version: '~5.9.0'
+          - angular-major: '22'
+            typescript-version: '~6.0.0'
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v5
+        with:
+          ref: ${{ github.head_ref || github.ref_name }}
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v5
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+
+      - name: Install locked workspace dependencies
+        run: npm ci
+
+      - name: Install Angular ${{ matrix.angular-major }} latest patch toolchain
+        run: |
+          latest_patch() {
+            npm view "$1@${{ matrix.angular-major }}" version --json \
+              | node -e "const fs = require('node:fs'); const value = JSON.parse(fs.readFileSync(0, 'utf8')); console.log(Array.isArray(value) ? value.at(-1) : value);"
+          }
+
+          ANGULAR_VERSION="$(latest_patch '@angular/core')"
+          ANGULAR_CLI_VERSION="$(latest_patch '@angular/cli')"
+          ANGULAR_BUILD_VERSION="$(latest_patch '@angular-devkit/build-angular')"
+          NG_PACKAGR_VERSION="$(latest_patch 'ng-packagr')"
+
+          echo "Angular framework version: ${ANGULAR_VERSION}"
+          echo "Angular CLI version: ${ANGULAR_CLI_VERSION}"
+          echo "Angular build-angular version: ${ANGULAR_BUILD_VERSION}"
+          echo "ng-packagr version: ${NG_PACKAGR_VERSION}"
+          echo "TypeScript version: ${{ matrix.typescript-version }}"
+
+          npm install --no-save --package-lock=false \
+            @angular/animations@"${ANGULAR_VERSION}" \
+            @angular/common@"${ANGULAR_VERSION}" \
+            @angular/compiler@"${ANGULAR_VERSION}" \
+            @angular/core@"${ANGULAR_VERSION}" \
+            @angular/forms@"${ANGULAR_VERSION}" \
+            @angular/platform-browser@"${ANGULAR_VERSION}" \
+            @angular/router@"${ANGULAR_VERSION}" \
+            @angular/compiler-cli@"${ANGULAR_VERSION}" \
+            @angular/cli@"${ANGULAR_CLI_VERSION}" \
+            @angular-devkit/build-angular@"${ANGULAR_BUILD_VERSION}" \
+            ng-packagr@"${NG_PACKAGR_VERSION}" \
+            typescript@"${{ matrix.typescript-version }}"
+
+      - name: Show effective Angular versions
+        run: |
+          node <<'NODE'
+          const packageNames = [
+            '@angular/core',
+            '@angular/animations',
+            '@angular/common',
+            '@angular/compiler',
+            '@angular/compiler-cli',
+            '@angular/cli',
+            '@angular-devkit/build-angular',
+            'ng-packagr',
+            'typescript',
+          ];
+
+          for (const packageName of packageNames) {
+            const packageJson = require(`${packageName}/package.json`);
+            console.log(`${packageName}: ${packageJson.version}`);
+          }
+          NODE
+
+      - name: Run library tests
+        run: npx ng test ${{ env.LIBRARY_PROJECT }} --watch=false --browsers=ChromeHeadless
+
+      - name: Build library
+        run: npx ng build ${{ env.LIBRARY_PROJECT }}
+
+  package:
+    name: Package
+    runs-on: ubuntu-latest
+    needs:
+      - license
+      - compatibility
+    if: needs.license.outputs.updated != 'true'
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v5
+        with:
+          ref: ${{ github.head_ref || github.ref_name }}
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v5
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run library tests
+        run: npx ng test ${{ env.LIBRARY_PROJECT }} --watch=false --browsers=ChromeHeadless
+
+      - name: Build library
+        run: npx ng build ${{ env.LIBRARY_PROJECT }}
+
+      - name: Copy workspace license into library dist package
+        run: |
+          cp LICENSE "${LIBRARY_DIST}/LICENSE"
+
+      - name: Verify package contents
+        run: |
+          test -f "${LIBRARY_DIST}/package.json"
+          test -f "${LIBRARY_DIST}/README.md"
+          test -f "${LIBRARY_DIST}/LICENSE"
+          test -f "${LIBRARY_DIST}/CHANGELOG.md"
+          test -f "${LIBRARY_DIST}/THIRD-PARTY-LICENSES.md"
+          test -d "${LIBRARY_DIST}/docs"
+          node -e "const p=require('./${LIBRARY_DIST}/package.json'); if (!p.name || !p.version) throw new Error('Missing package name or version'); if (p.private === true) throw new Error('Library package must not be private'); console.log(p.name + '@' + p.version)"
+
+      - name: Create npm package tarball
+        working-directory: ${{ env.LIBRARY_DIST }}
+        run: npm pack
+
+      - name: Upload library dist artifact
+        uses: actions/upload-artifact@v5
+        with:
+          name: jeap-jwe-client-dist
+          path: ${{ env.LIBRARY_DIST }}
+          if-no-files-found: error

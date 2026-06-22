@@ -1,0 +1,116 @@
+name: Library Release
+
+on:
+  push:
+    tags:
+      - 'jeap-jwe-client@*.*.*'
+
+permissions:
+  contents: read
+  id-token: write
+
+concurrency:
+  group: library-release-${{ github.ref }}
+  cancel-in-progress: false
+
+env:
+  NODE_VERSION: '22.22.3'
+  LIBRARY_PROJECT: jeap-jwe-client
+  LIBRARY_ROOT: projects/jeap-jwe-client
+  LIBRARY_DIST: dist/jeap-jwe-client
+
+jobs:
+  release:
+    name: Build, verify and publish
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+
+      - name: Verify release tag is on main
+        run: |
+          git fetch origin main
+          git branch --remote --contains "$GITHUB_SHA" | grep 'origin/main'
+
+      - name: Setup Node.js for npm registry
+        uses: actions/setup-node@v5
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+          registry-url: https://registry.npmjs.org
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Generate current third-party license report
+        run: |
+          npx --yes license-checker-rseidelsohn \
+            --markdown \
+            --out THIRD-PARTY-LICENSES.generated.md
+
+      - name: Verify THIRD-PARTY-LICENSES.md is up to date
+        run: |
+          diff -u "${LIBRARY_ROOT}/THIRD-PARTY-LICENSES.md" THIRD-PARTY-LICENSES.generated.md
+
+      - name: Run library tests
+        run: npx ng test ${{ env.LIBRARY_PROJECT }} --watch=false --browsers=ChromeHeadless
+
+      - name: Build library
+        run: npx ng build ${{ env.LIBRARY_PROJECT }}
+
+      - name: Verify release tag matches package name and version
+        run: |
+          PACKAGE_NAME=$(node -p "require('./${LIBRARY_DIST}/package.json').name")
+          PACKAGE_VERSION=$(node -p "require('./${LIBRARY_DIST}/package.json').version")
+          EXPECTED_TAG="${PACKAGE_NAME}@${PACKAGE_VERSION}"
+          ACTUAL_TAG="${GITHUB_REF_NAME}"
+
+          if [ "${ACTUAL_TAG}" != "${EXPECTED_TAG}" ]; then
+            echo "Expected tag ${EXPECTED_TAG}, got ${ACTUAL_TAG}"
+            exit 1
+          fi
+
+      - name: Verify package contents
+        run: |
+          test -f "${LIBRARY_DIST}/package.json"
+          test -f "${LIBRARY_DIST}/README.md"
+          test -f "${LIBRARY_DIST}/LICENSE"
+          test -f "${LIBRARY_DIST}/CHANGELOG.md"
+          test -f "${LIBRARY_DIST}/THIRD-PARTY-LICENSES.md"
+          test -d "${LIBRARY_DIST}/docs"
+
+          node -e "const p=require('./${LIBRARY_DIST}/package.json'); if (!p.name || !p.version) throw new Error('Missing package name or version'); if (p.private === true) throw new Error('Library package must not be private'); console.log(`${p.name}@${p.version}`)"
+
+      - name: Create npm package tarball
+        working-directory: ${{ env.LIBRARY_DIST }}
+        run: npm pack
+
+      - name: Upload library dist artifact
+        uses: actions/upload-artifact@v5
+        with:
+          name: jeap-jwe-client-release-dist
+          path: ${{ env.LIBRARY_DIST }}
+          if-no-files-found: error
+
+      - name: Publish dry run
+        working-directory: ${{ env.LIBRARY_DIST }}
+        run: npm publish --dry-run
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+
+      # Publishing is intentionally disabled while the library is still in review.
+      #
+      # Enable this step when:
+      # - the package name and registry are final,
+      # - the npm package access model is clear,
+      # - the NPM_TOKEN secret or trusted publishing setup exists,
+      # - the package contents have been reviewed.
+      #
+      # - name: Publish package
+      #   working-directory: ${{ env.LIBRARY_DIST }}
+      #   run: npm publish --provenance
+      #   env:
+      #     NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
