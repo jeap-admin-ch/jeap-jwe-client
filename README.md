@@ -31,7 +31,6 @@ Start with [Getting started](projects/jeap-jwe-client/docs/getting-started.md), 
 | Error handling (`JeapJweError`, retryable and non-retryable failures)                 | [projects/jeap-jwe-client/docs/error-handling.md](projects/jeap-jwe-client/docs/error-handling.md)                       |
 | Testing (unit tests, integration tests, protocol trace for reviews)                   | [projects/jeap-jwe-client/docs/testing.md](projects/jeap-jwe-client/docs/testing.md)                                     |
 | Security considerations (logging, CEKs, JWKs, plaintext, compact JWE values)          | [projects/jeap-jwe-client/docs/security-considerations.md](projects/jeap-jwe-client/docs/security-considerations.md)     |
-| Troubleshooting (common setup, config, JWKS, encryption and Angular test issues)      | [projects/jeap-jwe-client/docs/troubleshooting.md](projects/jeap-jwe-client/docs/troubleshooting.md)                     |
 | Publishing and versioning (release flow, package metadata, changelog, docs assets)    | [projects/jeap-jwe-client/docs/publishing-and-versioning.md](projects/jeap-jwe-client/docs/publishing-and-versioning.md) |
 
 ## Usage
