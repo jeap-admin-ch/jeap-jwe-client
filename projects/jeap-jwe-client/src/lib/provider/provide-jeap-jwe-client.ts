@@ -1,5 +1,4 @@
 import { EnvironmentProviders, makeEnvironmentProviders } from '@angular/core';
-import { provideHttpClient, withInterceptors } from '@angular/common/http';
 
 import {
   isSecureBackendUrl,
@@ -9,18 +8,23 @@ import { JeapJweClientConfig } from '../config/jeap-jwe-client-config';
 import { JeapJweClientConfigService } from '../config/jeap-jwe-client-config.service';
 import { JEAP_JWE_CLIENT_CONFIG } from '../config/jeap-jwe-client.tokens';
 import { JoseJweRequestEncryptor } from '../crypto/jose-jwe-request-encryptor';
+import { JoseJweResponseDecryptor } from '../crypto/jose-jwe-response-decryptor';
 import { JweRequestEncryptor } from '../crypto/jwe-request-encryptor';
-import {
-  JweResponseDecryptor,
-} from '../crypto/jwe-response-decryptor';
-import { jeapJweInterceptor } from '../interceptor/jeap-jwe.interceptor';
+import { JweResponseDecryptor } from '../crypto/jwe-response-decryptor';
 import { JweKeySelector } from '../jwks/jwe-key-selector';
 import { JwksCache } from '../jwks/jwks-cache';
 import { JwksClient } from '../jwks/jwks-client';
 import { JwksRefreshService } from '../jwks/jwks-refresh.service';
 import { JweEndpointMatcher } from '../matcher/jwe-endpoint-matcher';
-import {JoseJweResponseDecryptor} from "../crypto/jose-jwe-response-decryptor";
 
+/**
+ * Registers the JWE client services and configuration.
+ *
+ * The consuming application owns its `HttpClient` setup and must register the
+ * interceptor itself, e.g.
+ * `provideHttpClient(withInterceptors([jeapJweInterceptor]))`. This keeps the
+ * application in control of interceptor ordering and other HttpClient features.
+ */
 export function provideJeapJweClient(
   config: JeapJweClientConfig
 ): EnvironmentProviders {
@@ -49,8 +53,6 @@ export function provideJeapJweClient(
       provide: JweResponseDecryptor,
       useClass: JoseJweResponseDecryptor,
     },
-
-    provideHttpClient(withInterceptors([jeapJweInterceptor])),
   ]);
 }
 
