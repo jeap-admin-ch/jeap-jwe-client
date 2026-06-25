@@ -19,19 +19,19 @@ ordinary `HttpClient` requests and typed JSON responses while protected requests
 
 ## Documentation
 
-Start with [Getting started](projects/jeap-jwe-client/docs/getting-started.md), then follow the links below.
+Start with [Getting started](docs/getting-started.md), then follow the links below.
 
 | Topic                                                                                 | File                                                                                                                     |
 |---------------------------------------------------------------------------------------|--------------------------------------------------------------------------------------------------------------------------|
-| Getting started (add the dependency, configure the provider and interceptor)          | [projects/jeap-jwe-client/docs/getting-started.md](projects/jeap-jwe-client/docs/getting-started.md)                     |
-| Configuration reference (`JeapJweClientConfig`, excludes, backend config loading)     | [projects/jeap-jwe-client/docs/configuration.md](projects/jeap-jwe-client/docs/configuration.md)                         |
-| Backend contract (`/.well-known/jwe-config`, JWKS, headers, response encryption)      | [projects/jeap-jwe-client/docs/backend-contract.md](projects/jeap-jwe-client/docs/backend-contract.md)                   |
-| Architecture (interceptor, matcher, config service, JWKS cache, encryptor, decryptor) | [projects/jeap-jwe-client/docs/architecture.md](projects/jeap-jwe-client/docs/architecture.md)                           |
-| Key rotation and retry behavior (`keys[0]`, refresh, `JWE_UNKNOWN_KID`)               | [projects/jeap-jwe-client/docs/key-rotation.md](projects/jeap-jwe-client/docs/key-rotation.md)                           |
-| Error handling (`JeapJweError`, retryable and non-retryable failures)                 | [projects/jeap-jwe-client/docs/error-handling.md](projects/jeap-jwe-client/docs/error-handling.md)                       |
-| Testing (unit tests, integration tests, protocol trace for reviews)                   | [projects/jeap-jwe-client/docs/testing.md](projects/jeap-jwe-client/docs/testing.md)                                     |
-| Security considerations (logging, CEKs, JWKs, plaintext, compact JWE values)          | [projects/jeap-jwe-client/docs/security-considerations.md](projects/jeap-jwe-client/docs/security-considerations.md)     |
-| Publishing and versioning (release flow, package metadata, changelog, docs assets)    | [projects/jeap-jwe-client/docs/publishing-and-versioning.md](projects/jeap-jwe-client/docs/publishing-and-versioning.md) |
+| Getting started (add the dependency, configure the provider and interceptor)          | [docs/getting-started.md](docs/getting-started.md)                     |
+| Configuration reference (`JeapJweClientConfig`, excludes, backend config loading)     | [docs/configuration.md](docs/configuration.md)                         |
+| Backend contract (`/.well-known/jwe-config`, JWKS, headers, response encryption)      | [docs/backend-contract.md](docs/backend-contract.md)                   |
+| Architecture (interceptor, matcher, config service, JWKS cache, encryptor, decryptor) | [docs/architecture.md](docs/architecture.md)                           |
+| Key rotation and retry behavior (`keys[0]`, refresh, `JWE_UNKNOWN_KID`)               | [docs/key-rotation.md](docs/key-rotation.md)                           |
+| Error handling (`JeapJweError`, retryable and non-retryable failures)                 | [docs/error-handling.md](docs/error-handling.md)                       |
+| Testing (unit tests, integration tests, protocol trace for reviews)                   | [docs/testing.md](docs/testing.md)                                     |
+| Security considerations (logging, CEKs, JWKs, plaintext, compact JWE values)          | [docs/security-considerations.md](docs/security-considerations.md)     |
+| Publishing and versioning (release flow, package metadata, changelog, docs assets)    | [docs/publishing-and-versioning.md](docs/publishing-and-versioning.md) |
 
 ## Usage
 
@@ -92,7 +92,7 @@ This repository is an Angular workspace containing the publishable library proje
 | `projects/jeap-jwe-client/package.json`      | Publishable library package metadata and library version |
 | `projects/jeap-jwe-client/ng-package.json`   | Angular library packaging configuration                  |
 | `projects/jeap-jwe-client/src/public-api.ts` | Public API entry point                                   |
-| `projects/jeap-jwe-client/docs/`             | Library documentation                                    |
+| `docs/`             | Library documentation                                    |
 | `dist/jeap-jwe-client/`                      | Built publishable package                                |
 
 The workspace root package is private and is not published. The library version is managed in:
@@ -134,7 +134,7 @@ package is built to:
 dist/jeap-jwe-client/
 ```
 
-See [projects/jeap-jwe-client/docs/publishing-and-versioning.md](projects/jeap-jwe-client/docs/publishing-and-versioning.md)
+See [docs/publishing-and-versioning.md](docs/publishing-and-versioning.md)
 for release flow, versioning rules, changelog handling and package verification.
 
 ## Changes

@@ -53,21 +53,24 @@ The backend may override the JWKS URI, refresh interval, and exclude rules throu
 
 ## Documentation
 
-The `docs` folder contains the developer and integration documentation for `jeap-jwe-client`.
+Full documentation for `jeap-jwe-client` is published with the jEAP documentation and on GitHub:
+
+- jEAP documentation site: <https://jeap-admin-ch.github.io/>
+- Source and docs on GitHub: <https://github.com/jeap-admin-ch/jeap-jwe-client/tree/main/docs>
 
 Recommended reading order:
 
-1. [Getting started](docs/getting-started.md)
-2. [Configuration](docs/configuration.md)
-3. [Backend contract](docs/backend-contract.md)
-4. [Architecture](docs/architecture.md)
-5. [Key rotation](docs/key-rotation.md)
-6. [Error handling](docs/error-handling.md)
-7. [Testing](docs/testing.md)
-8. [Security considerations](docs/security-considerations.md)
-9. [Publishing and versioning](docs/publishing-and-versioning.md)
-
+1. [Getting started](https://github.com/jeap-admin-ch/jeap-jwe-client/blob/main/docs/getting-started.md)
+2. [Configuration](https://github.com/jeap-admin-ch/jeap-jwe-client/blob/main/docs/configuration.md)
+3. [Backend contract](https://github.com/jeap-admin-ch/jeap-jwe-client/blob/main/docs/backend-contract.md)
+4. [Architecture](https://github.com/jeap-admin-ch/jeap-jwe-client/blob/main/docs/architecture.md)
+5. [Key rotation](https://github.com/jeap-admin-ch/jeap-jwe-client/blob/main/docs/key-rotation.md)
+6. [Error handling](https://github.com/jeap-admin-ch/jeap-jwe-client/blob/main/docs/error-handling.md)
+7. [Testing](https://github.com/jeap-admin-ch/jeap-jwe-client/blob/main/docs/testing.md)
+8. [Security considerations](https://github.com/jeap-admin-ch/jeap-jwe-client/blob/main/docs/security-considerations.md)
+9. [Publishing and versioning](https://github.com/jeap-admin-ch/jeap-jwe-client/blob/main/docs/publishing-and-versioning.md)
 
 ## License
 
-See the repository license.
+This library is Open Source Software licensed under the
+[Apache License 2.0](https://github.com/jeap-admin-ch/jeap-jwe-client/blob/main/LICENSE).

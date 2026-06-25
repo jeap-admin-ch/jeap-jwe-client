@@ -64,9 +64,31 @@ jeap-jwe-client@0.1.0
 ```
 
 
+## Documentation location
+
+The documentation lives in the repository root `docs/` directory so the jEAP
+documentation pipeline (Docusaurus) discovers and aggregates it, and so it renders
+on GitHub:
+
+```text
+README.md
+docs/
+projects/jeap-jwe-client/
+```
+
+The documentation is not bundled into the published npm package. The library
+`README.md` links to the public documentation instead:
+
+- the jEAP documentation site,
+- the `docs/` directory on GitHub.
+
+This keeps a single source of truth for the documentation and avoids broken
+relative links on npmjs.com.
+
 ## Packaging documentation assets
 
-The published package includes README, changelog, and documentation files.
+The published package includes the library README, the changelog, and the third-party
+license notices.
 
 `projects/jeap-jwe-client/ng-package.json`:
 
@@ -75,7 +97,7 @@ The published package includes README, changelog, and documentation files.
   "assets": [
     "README.md",
     "CHANGELOG.md",
-    "docs/**/*.md"
+    "THIRD-PARTY-LICENSES.md"
   ]
 }
 ```

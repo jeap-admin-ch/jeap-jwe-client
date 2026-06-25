@@ -170,13 +170,16 @@ Content-Type: application/problem+json
 
 ```json
 {
-  "type": "https://dazit.ch/problems/jwe/unknown-kid",
+  "type": "urn:problem-type:jwe-unknown-kid",
   "title": "Unknown JWE key identifier",
   "status": 400,
   "detail": "The JWE key identifier is unknown or no longer accepted by this service.",
   "code": "JWE_UNKNOWN_KID"
 }
 ```
+
+The client only inspects the `code` field to decide whether to retry. The `type`,
+`title`, and `detail` fields are informational and are not interpreted by the client.
 
 Backend guarantee:
 

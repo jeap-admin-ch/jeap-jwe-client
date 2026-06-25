@@ -2,7 +2,7 @@
 
 Guidance for AI coding agents working **in this repository**. For how to *use* the library in a
 consuming Angular application, read [README.md](README.md) and the
-[projects/jeap-jwe-client/docs/](projects/jeap-jwe-client/docs/) folder instead.
+[docs/](docs/) folder instead.
 
 ## Project
 
@@ -24,27 +24,26 @@ package-lock.json                                       # Workspace dependency l
 angular.json                                            # Angular workspace configuration
 tsconfig.json                                           # Workspace TypeScript configuration
 tsconfig.spec.json                                      # Test TypeScript configuration
-README.md                                              # Workspace-level project overview
+README.md                                              # Workspace-level project overview; jEAP docs-site landing page
 .github/workflows/                                     # CI and release workflows, if present
+
+docs/                                                  # Focused documentation files (repo root for jEAP docs pipeline + GitHub)
+  getting-started.md                                   # Consumer setup
+  configuration.md                                     # Client configuration reference
+  backend-contract.md                                  # Backend HTTP/JWE contract
+  architecture.md                                      # Internal architecture
+  key-rotation.md                                      # JWKS order, refresh and retry behavior
+  error-handling.md                                    # Client and backend error handling
+  testing.md                                           # Test strategy and protocol trace
+  security-considerations.md                           # Security and logging rules
+  publishing-and-versioning.md                         # Release, versioning and publishing process
 
 projects/
   jeap-jwe-client/                                     # The publishable Angular library project
     package.json                                       # Library package metadata and published version
     ng-package.json                                    # ng-packagr configuration for the library package
-    README.md                                          # Library package README, if packaged with the library
+    README.md                                          # Library (npm) package README; links to public docs
     CHANGELOG.md                                       # Library changelog
-    docs/                                              # Focused documentation files
-      README.md                                        # Documentation index
-      getting-started.md                               # Consumer setup
-      configuration.md                                 # Client configuration reference
-      backend-contract.md                              # Backend HTTP/JWE contract
-      architecture.md                                  # Internal architecture
-      key-rotation.md                                  # JWKS order, refresh and retry behavior
-      error-handling.md                                # Client and backend error handling
-      testing.md                                       # Test strategy and protocol trace
-      security-considerations.md                       # Security and logging rules
-      troubleshooting.md                               # Common problems and fixes
-      publishing-and-versioning.md                     # Release, versioning and publishing process
     src/
       public-api.ts                                    # Public API entry point
       lib/
@@ -102,7 +101,9 @@ runtime packages aligned.
 - `tslib` is a runtime dependency.
 - Keep `sideEffects: false` unless a future change introduces top-level side effects.
 - Keep `jose` listed in `allowedNonPeerDependencies` in `ng-package.json`.
-- Package README, changelog and docs through `ng-package.json` assets.
+- Package the library README, changelog and third-party license notices through `ng-package.json`
+  assets. Documentation lives in the repository root `docs/` directory and is not bundled into the
+  npm package; the library README links to the public documentation instead.
 
 Recommended `ng-package.json` assets:
 
@@ -111,7 +112,7 @@ Recommended `ng-package.json` assets:
   "assets": [
     "README.md",
     "CHANGELOG.md",
-    "docs/**/*.md"
+    "THIRD-PARTY-LICENSES.md"
   ]
 }
 ```
@@ -251,7 +252,7 @@ The trace must not show real plaintext, CEKs, private keys, or full compact JWE 
 ## Docs
 
 When changing public behavior, update the matching focused file under
-[projects/jeap-jwe-client/docs/](projects/jeap-jwe-client/docs/) and the documentation table in
+[docs/](docs/) and the documentation table in
 [README.md](README.md).
 
 Update docs when changing:

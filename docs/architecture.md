@@ -4,16 +4,16 @@
 
 ## High-level flow
 
-```text
-Angular HttpClient
-  -> jeapJweInterceptor
-  -> Endpoint matcher
-  -> Config service
-  -> JWKS cache / key selector
-  -> Request encryptor
-  -> Backend
-  -> Response decryptor
-  -> Angular application
+```mermaid
+flowchart TD
+  A[Angular HttpClient] --> B[jeapJweInterceptor]
+  B --> C[Endpoint matcher]
+  C --> D[Config service]
+  D --> E[JWKS cache / key selector]
+  E --> F[Request encryptor]
+  F --> G[Backend]
+  G --> H[Response decryptor]
+  H --> I[Angular application]
 ```
 
 ## Components
@@ -88,14 +88,14 @@ The response CEK must never be logged, persisted, cached globally, or exposed ou
 
 ## Retry flow
 
-```text
-protected request
-  -> backend returns 400 application/problem+json code=JWE_UNKNOWN_KID
-  -> client refreshes JWKS
-  -> client encrypts original request again
-  -> client creates a new response CEK
-  -> client retries once
-  -> second failure is returned to the application
+```mermaid
+flowchart TD
+  A[Protected request] --> B["Backend returns 400 application/problem+json, code=JWE_UNKNOWN_KID"]
+  B --> C[Client refreshes JWKS]
+  C --> D[Client encrypts original request again]
+  D --> E[Client creates a new response CEK]
+  E --> F[Client retries once]
+  F --> G[Second failure is returned to the application]
 ```
 
 There is no retry loop.

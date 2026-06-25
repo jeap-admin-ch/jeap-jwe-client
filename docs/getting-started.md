@@ -168,19 +168,19 @@ For details, see [Exclude merge strategy](./configuration.md#exclude-merge-strat
 
 For a protected request to the configured backend origin, the client performs this flow:
 
-```text
-Angular HttpClient request
-  -> check whether the request matches the configured origin
-  -> check whether the request is excluded
-  -> load backend JWE configuration, if enabled
-  -> load JWKS
-  -> select an encryption key
-  -> create a request-local response CEK
-  -> encrypt the JWE-Response-Key
-  -> encrypt the request body, if present
-  -> send the protected HTTP request
-  -> decrypt the application/jose response
-  -> return the plain Angular response
+```mermaid
+flowchart TD
+  A[Angular HttpClient request] --> B[Check whether the request matches the configured origin]
+  B --> C[Check whether the request is excluded]
+  C --> D[Load backend JWE configuration, if enabled]
+  D --> E[Load JWKS]
+  E --> F[Select an encryption key]
+  F --> G[Create a request-local response CEK]
+  G --> H[Encrypt the JWE-Response-Key]
+  H --> I[Encrypt the request body, if present]
+  I --> J[Send the protected HTTP request]
+  J --> K["Decrypt the application/jose response"]
+  K --> L[Return the plain Angular response]
 ```
 
 The application receives the same type it requested. The encrypted transport format is not exposed to application code.
