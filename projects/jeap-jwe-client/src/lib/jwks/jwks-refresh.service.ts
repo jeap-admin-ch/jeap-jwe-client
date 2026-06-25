@@ -18,7 +18,7 @@ export class JwksRefreshService implements OnDestroy {
   constructor(
     private readonly jwksCache: JwksCache,
     private readonly zone: NgZone,
-    @Inject(PLATFORM_ID) private readonly platformId: object
+    @Inject(PLATFORM_ID) private readonly platformId: string
   ) {}
 
   /**

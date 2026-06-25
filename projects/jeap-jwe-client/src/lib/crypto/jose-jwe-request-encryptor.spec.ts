@@ -7,10 +7,7 @@ import {
 } from 'jose';
 import { firstValueFrom, of } from 'rxjs';
 
-import {
-  JeapJweEndpointMatch,
-  JeapJweResolvedClientConfig,
-} from '../config/jeap-jwe-client-config';
+import { JeapJweEndpointMatch } from '../config/jeap-jwe-client-config';
 import { JeapJweError } from '../error/jeap-jwe-error';
 import { JeapJwePublicJwk } from '../jwks/jwk.model';
 import { JweKeySelector } from '../jwks/jwe-key-selector';
@@ -28,20 +25,15 @@ describe('JoseJweRequestEncryptor', () => {
   let encryptor: JweRequestEncryptor;
   let keySelector: jasmine.SpyObj<JweKeySelector>;
 
-  const config: JeapJweResolvedClientConfig = {
-    origin: 'https://api.example.ch',
-    loadBackendConfig: false,
-    jwksUri: '/.well-known/jwks.json',
-    refreshIntervalSeconds: 300,
-    exclude: [],
-  };
-
   const match: JeapJweEndpointMatch = {
     method: 'POST',
     url: 'https://api.example.ch/api/persons',
     origin: 'https://api.example.ch',
     path: '/api/persons',
-    config,
+    protocol: {
+      responseKeyHeader: JEAP_JWE_RESPONSE_KEY_HEADER,
+      contentTypeAllowlist: ['application/json'],
+    },
   };
 
   beforeEach(() => {
@@ -211,6 +203,13 @@ describe('JoseJweRequestEncryptor', () => {
       encryptor.encrypt(request, {
         ...match,
         path: '/api/problem',
+        protocol: {
+          responseKeyHeader: JEAP_JWE_RESPONSE_KEY_HEADER,
+          contentTypeAllowlist: [
+            'application/json',
+            'application/problem+json',
+          ],
+        },
       })
     );
 
@@ -366,5 +365,77 @@ describe('JoseJweRequestEncryptor', () => {
 
     expect(actualError instanceof JeapJweError).toBeTrue();
     expect(keySelector.selectCurrentKey).toHaveBeenCalledTimes(1);
+  });
+
+  it('returns a typed error when the request body cannot be serialized as JSON', async () => {
+    /**
+     * A circular reference cannot be serialized by JSON.stringify.
+     */
+    const circularBody: Record<string, unknown> = {};
+    circularBody['self'] = circularBody;
+
+    const request = new HttpRequest(
+      'POST',
+      'https://api.example.ch/api/persons',
+      circularBody
+    );
+
+    let actualError: unknown;
+
+    await firstValueFrom(encryptor.encrypt(request, match)).catch(error => {
+      actualError = error;
+    });
+
+    expect(actualError).toEqual(
+      jasmine.objectContaining({
+        name: 'JeapJweError',
+        code: 'JWE_REQUEST_SERIALIZATION_FAILED',
+        retryable: false,
+      })
+    );
+
+    /**
+     * Serialization failures must surface before any JWKS access.
+     */
+    expect(keySelector.selectCurrentKey).not.toHaveBeenCalled();
+  });
+
+  it('returns a typed error when request encryption fails for a policy-valid key', async () => {
+    /**
+     * The key satisfies the encryption policy (kty/use/alg) but carries a
+     * malformed modulus, so importing or encrypting with it fails.
+     */
+    const brokenKey = {
+      kty: 'RSA',
+      kid: 'transit-request-key:broken',
+      use: 'enc',
+      alg: JEAP_JWE_REQUEST_ALGORITHM,
+      n: 'not-a-valid-modulus',
+      e: 'AQAB',
+    } as unknown as JeapJwePublicJwk;
+
+    keySelector.selectCurrentKey.and.returnValue(of(brokenKey));
+
+    const request = new HttpRequest(
+      'POST',
+      'https://api.example.ch/api/persons',
+      { name: 'Alice' }
+    );
+
+    let actualError: unknown;
+
+    await firstValueFrom(encryptor.encrypt(request, match)).catch(error => {
+      actualError = error;
+    });
+
+    expect(actualError).toEqual(
+      jasmine.objectContaining({
+        name: 'JeapJweError',
+        code: 'JWE_REQUEST_ENCRYPTION_FAILED',
+        retryable: false,
+      })
+    );
+
+    expect(actualError instanceof JeapJweError).toBeTrue();
   });
 });

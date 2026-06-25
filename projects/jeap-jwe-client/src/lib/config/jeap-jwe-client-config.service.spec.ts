@@ -12,6 +12,7 @@ import { JeapJweError } from '../error/jeap-jwe-error';
 
 describe('JeapJweClientConfigService', () => {
   const sameOrigin = globalThis.location.origin;
+  const configUrl = `${sameOrigin}/.well-known/jwe-configuration`;
 
   let service: JeapJweClientConfigService;
   let httpMock: HttpTestingController;
@@ -39,38 +40,63 @@ describe('JeapJweClientConfigService', () => {
     httpMock.verify();
   });
 
-  it('loads backend configuration once and caches the result', async () => {
-    configure({
-      origin: sameOrigin,
-    });
+  it('loads backend metadata once and caches the result', async () => {
+    configure({ origin: sameOrigin });
 
     const firstConfigPromise = firstValueFrom(service.getConfig());
 
-    const configRequest = httpMock.expectOne(
-      `${sameOrigin}/.well-known/jwe-config`
-    );
+    const configRequest = httpMock.expectOne(configUrl);
 
     expect(configRequest.request.method).toBe('GET');
     expect(configRequest.request.headers.has('JWE-Response-Key')).toBeFalse();
 
     configRequest.flush({
-      jwksUri: '/.well-known/jwks.json',
-      refreshIntervalSeconds: 123,
-      exclude: [{ method: '*', path: '/backend-public/**' }],
+      jwksPath: '/custom/jwks.json',
+      contentTypeAllowlist: ['application/json', 'text/plain'],
+      responseKeyHeader: 'JWE-Response-Key',
     });
 
     const firstConfig = await firstConfigPromise;
 
-    expect(firstConfig.jwksUri).toBe('/.well-known/jwks.json');
-    expect(firstConfig.refreshIntervalSeconds).toBe(123);
-    expect(firstConfig.exclude).toEqual([
-      { method: '*', path: '/backend-public/**' },
+    expect(firstConfig.jwksUri).toBe('/custom/jwks.json');
+    expect(firstConfig.contentTypeAllowlist).toEqual([
+      'application/json',
+      'text/plain',
     ]);
+    expect(firstConfig.refreshIntervalSeconds).toBe(300);
 
     const secondConfig = await firstValueFrom(service.getConfig());
 
     expect(secondConfig).toBe(firstConfig);
-    httpMock.expectNone(`${sameOrigin}/.well-known/jwe-config`);
+    httpMock.expectNone(configUrl);
+  });
+
+  it('applies defaults when the backend metadata omits fields', async () => {
+    configure({ origin: sameOrigin });
+
+    const configPromise = firstValueFrom(service.getConfig());
+
+    httpMock.expectOne(configUrl).flush({});
+
+    const config = await configPromise;
+
+    expect(config.jwksUri).toBe('/.well-known/jwks.json');
+    expect(config.contentTypeAllowlist).toEqual(['application/json']);
+    expect(config.responseKeyHeader).toBe('JWE-Response-Key');
+  });
+
+  it('honors a backend-advertised response-key header', async () => {
+    configure({ origin: sameOrigin });
+
+    const configPromise = firstValueFrom(service.getConfig());
+
+    httpMock
+      .expectOne(configUrl)
+      .flush({ responseKeyHeader: 'X-Custom-Response-Key' });
+
+    const config = await configPromise;
+
+    expect(config.responseKeyHeader).toBe('X-Custom-Response-Key');
   });
 
   it('does not load backend configuration when loadBackendConfig is false', async () => {
@@ -87,10 +113,10 @@ describe('JeapJweClientConfigService', () => {
     expect(config.refreshIntervalSeconds).toBe(300);
     expect(config.exclude).toEqual([{ method: '*', path: '/local-public/**' }]);
 
-    httpMock.expectNone(`${sameOrigin}/.well-known/jwe-config`);
+    httpMock.expectNone(configUrl);
   });
 
-  it('extends backend exclude rules with local exclude rules by default', async () => {
+  it('uses client-owned exclude rules as-is', async () => {
     configure({
       origin: sameOrigin,
       exclude: [{ method: 'GET', path: '/local-public/**' }],
@@ -98,38 +124,7 @@ describe('JeapJweClientConfigService', () => {
 
     const configPromise = firstValueFrom(service.getConfig());
 
-    const configRequest = httpMock.expectOne(
-      `${sameOrigin}/.well-known/jwe-config`
-    );
-
-    configRequest.flush({
-      exclude: [{ method: '*', path: '/backend-public/**' }],
-    });
-
-    const config = await configPromise;
-
-    expect(config.exclude).toEqual([
-      { method: '*', path: '/backend-public/**' },
-      { method: 'GET', path: '/local-public/**' },
-    ]);
-  });
-
-  it('allows local exclude rules to override backend exclude rules', async () => {
-    configure({
-      origin: sameOrigin,
-      excludeMergeStrategy: 'override',
-      exclude: [{ method: 'GET', path: '/local-public/**' }],
-    });
-
-    const configPromise = firstValueFrom(service.getConfig());
-
-    const configRequest = httpMock.expectOne(
-      `${sameOrigin}/.well-known/jwe-config`
-    );
-
-    configRequest.flush({
-      exclude: [{ method: '*', path: '/backend-public/**' }],
-    });
+    httpMock.expectOne(configUrl).flush({ jwksPath: '/.well-known/jwks.json' });
 
     const config = await configPromise;
 
@@ -138,46 +133,34 @@ describe('JeapJweClientConfigService', () => {
     ]);
   });
 
-  it('uses configured jweConfigPath when loading backend configuration', async () => {
+  it('uses the configured jweConfigPath when loading backend configuration', async () => {
     configure({
       origin: sameOrigin,
-      jweConfigPath: '/custom/.well-known/jwe-config',
+      jweConfigPath: '/custom/jwe-configuration',
     });
 
     const configPromise = firstValueFrom(service.getConfig());
 
-    const configRequest = httpMock.expectOne(
-      `${sameOrigin}/custom/.well-known/jwe-config`
-    );
-
-    configRequest.flush({
-      jwksUri: '/custom/.well-known/jwks.json',
-    });
+    httpMock
+      .expectOne(`${sameOrigin}/custom/jwe-configuration`)
+      .flush({ jwksPath: '/custom/jwks.json' });
 
     const config = await configPromise;
 
-    expect(config.jwksUri).toBe('/custom/.well-known/jwks.json');
+    expect(config.jwksUri).toBe('/custom/jwks.json');
   });
 
   it('throws a typed error when backend configuration loading fails', async () => {
-    configure({
-      origin: sameOrigin,
-      loadBackendConfig: true,
-    });
+    configure({ origin: sameOrigin, loadBackendConfig: true });
 
     const configPromise = firstValueFrom(service.getConfig());
 
-    const configRequest = httpMock.expectOne(
-      `${sameOrigin}/.well-known/jwe-config`
-    );
-
-    configRequest.flush(
-      { message: 'config unavailable' },
-      {
-        status: 500,
-        statusText: 'Internal Server Error',
-      }
-    );
+    httpMock
+      .expectOne(configUrl)
+      .flush(
+        { message: 'config unavailable' },
+        { status: 500, statusText: 'Internal Server Error' }
+      );
 
     await expectAsync(configPromise).toBeRejectedWith(
       jasmine.objectContaining({
@@ -186,5 +169,28 @@ describe('JeapJweClientConfigService', () => {
         retryable: true,
       } satisfies Partial<JeapJweError>)
     );
+  });
+
+  it('retries loading after a failed attempt instead of caching the failure', async () => {
+    configure({ origin: sameOrigin, loadBackendConfig: true });
+
+    const failingPromise = firstValueFrom(service.getConfig());
+
+    httpMock
+      .expectOne(configUrl)
+      .flush(
+        { message: 'temporary' },
+        { status: 503, statusText: 'Unavailable' }
+      );
+
+    await expectAsync(failingPromise).toBeRejected();
+
+    const retryPromise = firstValueFrom(service.getConfig());
+
+    httpMock.expectOne(configUrl).flush({ jwksPath: '/.well-known/jwks.json' });
+
+    const config = await retryPromise;
+
+    expect(config.jwksUri).toBe('/.well-known/jwks.json');
   });
 });

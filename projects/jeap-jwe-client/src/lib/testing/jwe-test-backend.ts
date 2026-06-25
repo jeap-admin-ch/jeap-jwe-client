@@ -174,12 +174,12 @@ export class JeapJweTestBackend {
   flushUnknownKid(request: TestRequest): void {
     request.flush(
       JSON.stringify({
-        type: 'https://dazit.ch/problems/jwe/unknown-kid',
-        title: 'Unknown JWE key identifier',
+        type: 'urn:problem-type:jwe-unknown-kid',
+        title: 'Unknown or decommissioned key',
         status: 400,
         detail:
-          'The JWE key identifier is unknown or no longer accepted by this service.',
-        code: 'JWE_UNKNOWN_KID',
+          'The JWE was encrypted with an unknown or decommissioned key. Refresh your JWKS and retry.',
+        code: 'JWE_UNKNOWN_KEY_ID',
       }),
       {
         status: 400,

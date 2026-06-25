@@ -31,6 +31,8 @@ describe('JweKeySelector', () => {
         jwksUri: '/.well-known/jwks.json',
         refreshIntervalSeconds: 300,
         exclude: [],
+        responseKeyHeader: 'JWE-Response-Key',
+        contentTypeAllowlist: ['application/json'],
       },
     };
   }
@@ -71,12 +73,7 @@ describe('JweKeySelector', () => {
     expect(refreshService.ensureStarted).toHaveBeenCalledWith(300);
   });
 
-  it('selects a cached key by kid without refreshing the JWKS', () => {
-    const currentSnapshot = snapshot(
-      key('transit-key:7'),
-      key('transit-key:6')
-    );
-
+  it('returns a typed error when the JWKS snapshot has no active key', () => {
     const jwksCache = jasmine.createSpyObj<JwksCache>('JwksCache', [
       'getSnapshot',
       'getOrLoad',
@@ -88,89 +85,53 @@ describe('JweKeySelector', () => {
       ['ensureStarted']
     );
 
-    jwksCache.getSnapshot.and.returnValue(currentSnapshot);
-
-    const selector = new JweKeySelector(jwksCache, refreshService);
-
-    let selectedKey: JeapJwePublicJwk | undefined;
-
-    selector.selectByKid('transit-key:6').subscribe(result => {
-      selectedKey = result;
-    });
-
-    expect(selectedKey?.kid).toBe('transit-key:6');
-    expect(jwksCache.refresh).not.toHaveBeenCalled();
-  });
-
-  it('forces a JWKS refresh when a requested kid is not cached', () => {
-    const initialSnapshot = snapshot(key('transit-key:7'));
-    const refreshedSnapshot = snapshot(
-      key('transit-key:8'),
-      key('transit-key:7')
-    );
-
-    const jwksCache = jasmine.createSpyObj<JwksCache>('JwksCache', [
-      'getSnapshot',
-      'getOrLoad',
-      'refresh',
-    ]);
-
-    const refreshService = jasmine.createSpyObj<JwksRefreshService>(
-      'JwksRefreshService',
-      ['ensureStarted']
-    );
-
-    jwksCache.getSnapshot.and.returnValue(initialSnapshot);
-    jwksCache.refresh.and.returnValue(of(refreshedSnapshot));
-
-    const selector = new JweKeySelector(jwksCache, refreshService);
-
-    let selectedKey: JeapJwePublicJwk | undefined;
-
-    selector.selectByKid('transit-key:8').subscribe(result => {
-      selectedKey = result;
-    });
-
-    expect(jwksCache.refresh).toHaveBeenCalledTimes(1);
-    expect(selectedKey?.kid).toBe('transit-key:8');
-  });
-
-  it('returns a typed unknown-kid error when a forced refresh still cannot find the key', () => {
-    const currentSnapshot = snapshot(key('transit-key:7'));
-
-    const jwksCache = jasmine.createSpyObj<JwksCache>('JwksCache', [
-      'getSnapshot',
-      'getOrLoad',
-      'refresh',
-    ]);
-
-    const refreshService = jasmine.createSpyObj<JwksRefreshService>(
-      'JwksRefreshService',
-      ['ensureStarted']
-    );
-
-    jwksCache.getSnapshot.and.returnValue(currentSnapshot);
-    jwksCache.refresh.and.returnValue(of(currentSnapshot));
+    jwksCache.getOrLoad.and.returnValue(of(snapshot()));
 
     const selector = new JweKeySelector(jwksCache, refreshService);
 
     let actualError: unknown;
 
-    selector.selectByKid('transit-key:999').subscribe({
+    selector.selectCurrentKey().subscribe({
       error: error => {
         actualError = error;
       },
     });
 
-    expect(jwksCache.refresh).toHaveBeenCalledTimes(1);
-
     expect(actualError).toEqual(
       jasmine.objectContaining({
         name: 'JeapJweError',
-        code: 'JWE_UNKNOWN_KID',
+        code: 'JWE_JWKS_INVALID',
       })
     );
 
     expect(actualError instanceof JeapJweError).toBeTrue();
+  });
+
+  it('refreshes the JWKS and keeps the periodic schedule running', () => {
+    const refreshedSnapshot = snapshot(key('transit-key:8'));
+
+    const jwksCache = jasmine.createSpyObj<JwksCache>('JwksCache', [
+      'getSnapshot',
+      'getOrLoad',
+      'refresh',
+    ]);
+
+    const refreshService = jasmine.createSpyObj<JwksRefreshService>(
+      'JwksRefreshService',
+      ['ensureStarted']
+    );
+
+    jwksCache.refresh.and.returnValue(of(refreshedSnapshot));
+
+    const selector = new JweKeySelector(jwksCache, refreshService);
+
+    let result: JeapJwksSnapshot | undefined;
+
+    selector.refresh().subscribe(snapshotResult => {
+      result = snapshotResult;
+    });
+
+    expect(result).toBe(refreshedSnapshot);
+    expect(refreshService.ensureStarted).toHaveBeenCalledWith(300);
   });
 });

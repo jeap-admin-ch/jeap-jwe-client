@@ -3,6 +3,8 @@ import {
   HttpHeaders,
   HttpRequest,
   HttpResponse,
+  provideHttpClient,
+  withInterceptors,
 } from '@angular/common/http';
 import {
   HttpTestingController,
@@ -19,6 +21,7 @@ import {
 } from '../crypto/jwe-request-encryptor';
 import { JweResponseDecryptor } from '../crypto/jwe-response-decryptor';
 import { provideJeapJweClient } from '../provider/provide-jeap-jwe-client';
+import { jeapJweInterceptor } from './jeap-jwe.interceptor';
 
 class FakeJweRequestEncryptor extends JweRequestEncryptor {
   readonly calls: Array<{
@@ -130,9 +133,11 @@ describe('jeapJweInterceptor', () => {
         }),
 
         /**
-         * This must be registered after provideJeapJweClient so that
-         * Angular replaces the real HTTP backend with the test backend.
+         * The application owns HttpClient and registers the interceptor.
+         * provideHttpClientTesting is registered afterwards so Angular swaps
+         * in the test backend while keeping the interceptor active.
          */
+        provideHttpClient(withInterceptors([jeapJweInterceptor])),
         provideHttpClientTesting(),
 
         {

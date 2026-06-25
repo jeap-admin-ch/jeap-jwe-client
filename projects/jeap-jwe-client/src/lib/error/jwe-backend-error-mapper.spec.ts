@@ -1,24 +1,26 @@
 import { HttpErrorResponse } from '@angular/common/http';
 
 import { JeapJweError } from './jeap-jwe-error';
-import { mapRetryableBackendJweError } from './jwe-backend-error-mapper';
+import { mapBackendJweError } from './jwe-backend-error-mapper';
 
-describe('mapRetryableBackendJweError', () => {
-  it('maps an unknown-kid problem response to a retryable typed error', () => {
-    const backendError = new HttpErrorResponse({
-      status: 400,
-      statusText: 'Bad Request',
-      error: {
-        code: 'JWE_UNKNOWN_KID',
-      },
+describe('mapBackendJweError', () => {
+  function backendError(status: number, code: string): HttpErrorResponse {
+    return new HttpErrorResponse({
+      status,
+      statusText: 'Error',
+      error: { code },
     });
+  }
 
-    const mappedError = mapRetryableBackendJweError(backendError);
+  it('maps the unknown-key-id problem response to a retryable typed error', () => {
+    const mappedError = mapBackendJweError(
+      backendError(400, 'JWE_UNKNOWN_KEY_ID')
+    );
 
     expect(mappedError).toEqual(
       jasmine.objectContaining({
         name: 'JeapJweError',
-        code: 'JWE_UNKNOWN_KID',
+        code: 'JWE_UNKNOWN_KEY_ID',
         retryable: true,
       })
     );
@@ -26,27 +28,56 @@ describe('mapRetryableBackendJweError', () => {
     expect(mappedError instanceof JeapJweError).toBeTrue();
   });
 
-  it('does not map ordinary validation errors', () => {
-    const backendError = new HttpErrorResponse({
-      status: 400,
-      statusText: 'Bad Request',
-      error: {
-        code: 'VALIDATION_FAILED',
-      },
-    });
+  it('maps backend enforcement codes to non-retryable typed errors', () => {
+    const nonRetryableCodes = [
+      'JWE_REQUEST_ENCRYPTION_REQUIRED',
+      'JWE_RESPONSE_ENCRYPTION_REQUIRED',
+      'JWE_RESPONSE_KEY_REQUIRED',
+      'JWE_RESPONSE_KEY_INVALID',
+      'JWE_INVALID_CONTENT_TYPE',
+      'JWE_PAYLOAD_TOO_LARGE',
+      'JWE_MALFORMED',
+      'JWE_UNSUPPORTED_ALGORITHM',
+    ];
 
-    expect(mapRetryableBackendJweError(backendError)).toBeUndefined();
+    for (const code of nonRetryableCodes) {
+      const mappedError = mapBackendJweError(backendError(400, code));
+
+      expect(mappedError).toEqual(
+        jasmine.objectContaining({ code, retryable: false })
+      );
+    }
   });
 
-  it('does not map non-400 responses', () => {
-    const backendError = new HttpErrorResponse({
-      status: 500,
-      statusText: 'Internal Server Error',
-      error: {
-        code: 'ANOTHER_CODE',
-      },
+  it('parses a JSON string error body', () => {
+    const stringBodyError = new HttpErrorResponse({
+      status: 413,
+      statusText: 'Payload Too Large',
+      error: JSON.stringify({ code: 'JWE_PAYLOAD_TOO_LARGE' }),
     });
 
-    expect(mapRetryableBackendJweError(backendError)).toBeUndefined();
+    expect(mapBackendJweError(stringBodyError)).toEqual(
+      jasmine.objectContaining({ code: 'JWE_PAYLOAD_TOO_LARGE' })
+    );
+  });
+
+  it('does not map ordinary validation errors', () => {
+    expect(
+      mapBackendJweError(backendError(400, 'VALIDATION_FAILED'))
+    ).toBeUndefined();
+  });
+
+  it('does not map errors without a code field', () => {
+    const noCodeError = new HttpErrorResponse({
+      status: 400,
+      statusText: 'Bad Request',
+      error: { message: 'oops' },
+    });
+
+    expect(mapBackendJweError(noCodeError)).toBeUndefined();
+  });
+
+  it('does not map non-HTTP errors', () => {
+    expect(mapBackendJweError(new Error('client side'))).toBeUndefined();
   });
 });

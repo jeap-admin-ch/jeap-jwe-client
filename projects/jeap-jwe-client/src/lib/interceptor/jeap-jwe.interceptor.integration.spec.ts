@@ -1,4 +1,8 @@
-import { HttpClient } from '@angular/common/http';
+import {
+  HttpClient,
+  provideHttpClient,
+  withInterceptors,
+} from '@angular/common/http';
 import {
   HttpTestingController,
   provideHttpClientTesting,
@@ -9,6 +13,7 @@ import { decodeProtectedHeader } from 'jose';
 import { firstValueFrom } from 'rxjs';
 
 import { JeapJweBackendConfigResponse } from '../config/jeap-jwe-client-config';
+import { jeapJweInterceptor } from './jeap-jwe.interceptor';
 import {
   JEAP_JWE_MEDIA_TYPE,
   JEAP_JWE_RESPONSE_KEY_HEADER,
@@ -22,8 +27,8 @@ import {
   currentTestOrigin,
   HealthResponse,
   JWE_TEST_CONFIG_PATH,
-  JWE_TEST_EXCLUDED_HEALTH_PATH,
   JWE_TEST_JWKS_PATH,
+  JWE_TEST_LOCAL_EXCLUDED_PATH,
   JWE_TEST_PROTECTED_PERSON_PATH,
   JWE_TEST_PROTECTED_PERSONS_PATH,
   PersonResponse,
@@ -49,9 +54,11 @@ describe('jeapJweInterceptor integration', () => {
         provideJeapJweClient(createTestClientConfig()),
 
         /**
-         * The testing provider must be registered after the HttpClient provider
-         * so requests are routed through Angular's testing backend.
+         * The application registers the interceptor in its own HttpClient
+         * setup. The testing provider is registered afterwards so requests are
+         * routed through Angular's testing backend.
          */
+        provideHttpClient(withInterceptors([jeapJweInterceptor])),
         provideHttpClientTesting(),
       ],
     });
@@ -249,20 +256,21 @@ describe('jeapJweInterceptor integration', () => {
     });
   });
 
-  it('does not protect excluded technical endpoints', async () => {
+  it('does not protect endpoints excluded by a client rule', async () => {
     /**
      * Excluded endpoints must not trigger backend config loading, JWKS loading,
-     * request encryption, response-key creation, or response decryption.
+     * request encryption, response-key creation, or response decryption. This
+     * uses a non-default path so it proves the configured exclude is honored.
      */
-    traceSection('Excluded technical endpoint');
+    traceSection('Excluded endpoint');
 
     const responsePromise = firstValueFrom(
-      http.get<HealthResponse>(JWE_TEST_EXCLUDED_HEALTH_PATH)
+      http.get<HealthResponse>(JWE_TEST_LOCAL_EXCLUDED_PATH)
     );
 
     const request = backend.expectPlainRequest(
       'GET',
-      JWE_TEST_EXCLUDED_HEALTH_PATH
+      JWE_TEST_LOCAL_EXCLUDED_PATH
     );
 
     traceRequest('Plain request forwarded without JWE protection', request);
@@ -292,13 +300,13 @@ describe('jeapJweInterceptor integration', () => {
     });
   });
 
-  it('refreshes JWKS and retries once when the backend returns JWE_UNKNOWN_KID', async () => {
+  it('refreshes JWKS and retries once when the backend returns JWE_UNKNOWN_KEY_ID', async () => {
     /**
      * The first request uses a cached key that the backend rejects.
      * The client refreshes JWKS, encrypts the original request again,
      * creates a fresh response CEK, and retries once.
      */
-    traceSection('Retry after JWE_UNKNOWN_KID');
+    traceSection('Retry after JWE_UNKNOWN_KEY_ID');
 
     const oldKeyPair = await createJeapJweTestKeyPair('test-key-old');
     const newKeyPair = await createJeapJweTestKeyPair('test-key-new');
@@ -340,7 +348,7 @@ describe('jeapJweInterceptor integration', () => {
 
     traceJson('Mock backend rejects first request', {
       status: 400,
-      code: 'JWE_UNKNOWN_KID',
+      code: 'JWE_UNKNOWN_KEY_ID',
       reason:
         'The key identifier is unknown or no longer accepted by the backend.',
     });
@@ -348,7 +356,7 @@ describe('jeapJweInterceptor integration', () => {
     backend.flushUnknownKid(firstApiRequest);
 
     traceMessage(
-      'Client detects retryable JWE_UNKNOWN_KID, refreshes JWKS, and retries once.'
+      'Client detects retryable JWE_UNKNOWN_KEY_ID, refreshes JWKS, and retries once.'
     );
 
     backend.expectAndFlushJwks([newKeyPair.publicJwk]);
@@ -425,7 +433,7 @@ describe('jeapJweInterceptor integration', () => {
     });
   });
 
-  it('returns a typed error when the retry also returns JWE_UNKNOWN_KID', async () => {
+  it('returns a typed error when the retry also returns JWE_UNKNOWN_KEY_ID', async () => {
     /**
      * A second retryable backend error must not create a retry loop.
      * The typed error is returned to the application instead.
@@ -458,7 +466,7 @@ describe('jeapJweInterceptor integration', () => {
 
     traceJson('Mock backend rejects first request', {
       status: 400,
-      code: 'JWE_UNKNOWN_KID',
+      code: 'JWE_UNKNOWN_KEY_ID',
     });
 
     backend.flushUnknownKid(firstApiRequest);
@@ -480,7 +488,7 @@ describe('jeapJweInterceptor integration', () => {
 
     traceJson('Mock backend rejects retry again', {
       status: 400,
-      code: 'JWE_UNKNOWN_KID',
+      code: 'JWE_UNKNOWN_KEY_ID',
       expectedClientBehavior: 'Return typed error without another retry.',
     });
 
@@ -506,10 +514,15 @@ describe('jeapJweInterceptor integration', () => {
     expect(actualError).toEqual(
       jasmine.objectContaining({
         name: 'JeapJweError',
-        code: 'JWE_UNKNOWN_KID',
+        code: 'JWE_UNKNOWN_KEY_ID',
         retryable: true,
       })
     );
+
+    /**
+     * The client must not send a third protected request after the retry fails.
+     */
+    backend.expectNoRequest('POST', JWE_TEST_PROTECTED_PERSONS_PATH);
   });
 
   it('fails with a typed error when the encrypted response uses the wrong CEK', async () => {
@@ -579,7 +592,14 @@ describe('jeapJweInterceptor integration', () => {
       })
     );
 
-    expect((actualError as Error).message).not.toContain('eyJ');
+    /**
+     * The error must carry the fixed, safe message and must not leak the
+     * compact JWE response body or the CEK through the message or the cause.
+     */
+    expect((actualError as Error).message).toBe(
+      'Failed to decrypt the protected JWE response.'
+    );
+    expect(JSON.stringify(actualError)).not.toContain('eyJ');
   });
 });
 
@@ -589,19 +609,17 @@ function createTestClientConfig(): Parameters<typeof provideJeapJweClient>[0] {
     origin: currentTestOrigin(),
     jweConfigPath: JWE_TEST_CONFIG_PATH,
     loadBackendConfig: true,
+    /**
+     * A client-owned exclude rule on a non-default path, so the exclude test
+     * proves the configured rule is honored rather than a built-in default.
+     */
+    exclude: [{ method: '*', path: JWE_TEST_LOCAL_EXCLUDED_PATH }],
   };
 }
 
 function createTestBackendConfig(): JeapJweBackendConfigResponse {
   return {
-    jwksUri: JWE_TEST_JWKS_PATH,
-    refreshIntervalSeconds: 300,
-    exclude: [
-      {
-        method: '*',
-        path: JWE_TEST_EXCLUDED_HEALTH_PATH,
-      },
-    ],
+    jwksPath: JWE_TEST_JWKS_PATH,
   };
 }
 

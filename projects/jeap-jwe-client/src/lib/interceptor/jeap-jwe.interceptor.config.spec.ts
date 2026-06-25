@@ -3,6 +3,8 @@ import {
   HttpHeaders,
   HttpRequest,
   HttpResponse,
+  provideHttpClient,
+  withInterceptors,
 } from '@angular/common/http';
 import {
   HttpTestingController,
@@ -20,6 +22,7 @@ import {
 } from '../crypto/jwe-request-encryptor';
 import { JweResponseDecryptor } from '../crypto/jwe-response-decryptor';
 import { provideJeapJweClient } from '../provider/provide-jeap-jwe-client';
+import { jeapJweInterceptor } from './jeap-jwe.interceptor';
 
 class FakeJweRequestEncryptor extends JweRequestEncryptor {
   readonly calls: Array<{
@@ -112,7 +115,7 @@ describe('jeapJweInterceptor with backend configuration loading', () => {
   let responseDecryptor: FakeJweResponseDecryptor;
 
   const sameOrigin = globalThis.location.origin;
-  const configUrl = `${sameOrigin}/.well-known/jwe-config`;
+  const configUrl = `${sameOrigin}/.well-known/jwe-configuration`;
 
   beforeEach(() => {
     TestBed.configureTestingModule({
@@ -131,9 +134,11 @@ describe('jeapJweInterceptor with backend configuration loading', () => {
         }),
 
         /**
-         * This test backend observes both the config request and
-         * the actual API request.
+         * The application registers the interceptor. The test backend
+         * (registered afterwards) observes both the config request and the
+         * actual API request.
          */
+        provideHttpClient(withInterceptors([jeapJweInterceptor])),
         provideHttpClientTesting(),
 
         {
@@ -194,9 +199,7 @@ describe('jeapJweInterceptor with backend configuration loading', () => {
     expect(responseDecryptor.calls.length).toBe(0);
 
     backendConfigRequest.flush({
-      jwksUri: '/.well-known/jwks.json',
-      refreshIntervalSeconds: 300,
-      exclude: [],
+      jwksPath: '/.well-known/jwks.json',
     });
 
     const apiRequest = httpMock.expectOne('/api/persons/123');
@@ -229,9 +232,7 @@ describe('jeapJweInterceptor with backend configuration loading', () => {
     const backendConfigRequest = httpMock.expectOne(configUrl);
 
     backendConfigRequest.flush({
-      jwksUri: '/.well-known/jwks.json',
-      refreshIntervalSeconds: 300,
-      exclude: [],
+      jwksPath: '/.well-known/jwks.json',
     });
 
     const firstApiRequest = httpMock.expectOne('/api/persons/1');
@@ -249,36 +250,6 @@ describe('jeapJweInterceptor with backend configuration loading', () => {
 
     expect(requestEncryptor.calls.length).toBe(2);
     expect(responseDecryptor.calls.length).toBe(2);
-  });
-
-  it('does not encrypt a request excluded by backend configuration', () => {
-    let actualResponse: unknown;
-
-    http.get('/api/backend-public/status').subscribe(response => {
-      actualResponse = response;
-    });
-
-    const backendConfigRequest = httpMock.expectOne(configUrl);
-
-    backendConfigRequest.flush({
-      exclude: [{ method: '*', path: '/api/backend-public/**' }],
-    });
-
-    const apiRequest = httpMock.expectOne('/api/backend-public/status');
-
-    /**
-     * The API request is forwarded unchanged because it is blacklisted
-     * by the backend-provided exclude rules.
-     */
-    expect(apiRequest.request.method).toBe('GET');
-    expect(apiRequest.request.headers.has('JWE-Response-Key')).toBeFalse();
-    expect(apiRequest.request.headers.has('Content-Type')).toBeFalse();
-
-    apiRequest.flush({ status: 'ok' });
-
-    expect(actualResponse).toEqual({ status: 'ok' });
-    expect(requestEncryptor.calls.length).toBe(0);
-    expect(responseDecryptor.calls.length).toBe(0);
   });
 
   it('does not load backend configuration for a locally excluded request', () => {
@@ -313,7 +284,7 @@ describe('jeapJweInterceptor with backend configuration loading', () => {
   it('does not load backend configuration for the config endpoint itself', () => {
     let actualResponse: unknown;
 
-    http.get('/.well-known/jwe-config').subscribe(response => {
+    http.get('/.well-known/jwe-configuration').subscribe(response => {
       actualResponse = response;
     });
 
@@ -321,22 +292,20 @@ describe('jeapJweInterceptor with backend configuration loading', () => {
      * The config endpoint is part of the default blacklist.
      * Therefore it must not trigger a second recursive config request.
      */
-    const configEndpointRequest = httpMock.expectOne('/.well-known/jwe-config');
+    const configEndpointRequest = httpMock.expectOne(
+      '/.well-known/jwe-configuration'
+    );
 
     expect(
       configEndpointRequest.request.headers.has('JWE-Response-Key')
     ).toBeFalse();
 
     configEndpointRequest.flush({
-      jwksUri: '/.well-known/jwks.json',
-      refreshIntervalSeconds: 300,
-      exclude: [],
+      jwksPath: '/.well-known/jwks.json',
     });
 
     expect(actualResponse).toEqual({
-      jwksUri: '/.well-known/jwks.json',
-      refreshIntervalSeconds: 300,
-      exclude: [],
+      jwksPath: '/.well-known/jwks.json',
     });
 
     expect(requestEncryptor.calls.length).toBe(0);
