@@ -6,23 +6,27 @@ The library protects requests to a configured backend origin, encrypts supported
 
 ## What it does
 
-- Loads backend JWE configuration from `/.well-known/jwe-config`.
+- Loads backend JWE configuration from `/.well-known/jwe-configuration`.
 - Loads public encryption keys from the configured JWKS endpoint.
 - Uses the first public JWKS key as the current request encryption key.
 - Encrypts JSON request bodies with `RSA-OAEP-256` and `A256GCM`.
 - Always sends `JWE-Response-Key` for protected requests, including `GET`.
 - Sets `Accept: application/jose` for protected requests.
 - Decrypts backend responses that use `alg: dir` and `enc: A256GCM`.
-- Refreshes JWKS and retries once when the backend returns `JWE_UNKNOWN_KID`.
+- Refreshes JWKS and retries once when the backend returns `JWE_UNKNOWN_KEY_ID`.
 - Leaves excluded endpoints and other origins untouched.
 
 ## Installation
 
 ```bash
-npm install jeap-jwe-client jose
+npm install jeap-jwe-client
 ```
 
+`jose` is pulled in automatically as a bundled runtime dependency.
+
 ## Minimal Angular setup
+
+The library does not call `provideHttpClient` itself. The consuming application owns its `HttpClient` setup and must register the `jeapJweInterceptor` alongside `provideJeapJweClient`, as shown below.
 
 ```ts
 import { ApplicationConfig } from '@angular/core';
@@ -45,11 +49,11 @@ export const appConfig: ApplicationConfig = {
 With this configuration the client loads:
 
 ```text
-GET https://api.example.ch/.well-known/jwe-config
+GET https://api.example.ch/.well-known/jwe-configuration
 GET https://api.example.ch/.well-known/jwks.json
 ```
 
-The backend may override the JWKS URI, refresh interval, and exclude rules through the backend configuration response.
+The backend metadata may provide the JWKS path, the content-type allowlist, and the response-key header. Exclude rules are owned by the client; the backend does not publish them.
 
 ## Documentation
 

@@ -17,7 +17,7 @@ The goal is to test both sides of the client behavior:
 | JWKS             | Loading, validation, cache behavior, refresh, key selection                |
 | Crypto           | Request encryption, response decryption, wrong key, unsupported algorithms |
 | Response CEK     | Header exists, request-local key, `GET` without body                       |
-| Errors           | Unknown `kid`, malformed JWE, decryption failure                           |
+| Errors           | Unknown key id, malformed JWE, decryption failure                          |
 
 ## Integration tests
 
@@ -33,7 +33,7 @@ The POST happy path should cover the full request and response lifecycle:
 
 ```mermaid
 flowchart TD
-  A[Angular HttpClient] --> B["Load /.well-known/jwe-config"]
+  A[Angular HttpClient] --> B["Load /.well-known/jwe-configuration"]
   B --> C["Load /.well-known/jwks.json"]
   C --> D[Encrypt request body]
   D --> E["Set Accept: application/jose"]
@@ -88,6 +88,8 @@ Example excluded endpoint:
 /actuator/health
 ```
 
+Note that the configuration and JWKS requests are not relevant to exclude handling: the client issues them through Angular's `HttpBackend` directly, so they always bypass the interceptor and are never encrypted, regardless of excludes.
+
 ## Retry after unknown key
 
 The client should handle retryable key errors without creating an infinite retry loop.
@@ -97,7 +99,7 @@ A typical test flow is:
 ```mermaid
 flowchart TD
   A[Client loads JWKS with old key] --> B[Client sends protected request with old kid]
-  B --> C[Backend returns JWE_UNKNOWN_KID]
+  B --> C[Backend returns JWE_UNKNOWN_KEY_ID]
   C --> D[Client refreshes JWKS]
   D --> E[Client retries the original request once with new kid]
   E --> F[Backend returns encrypted success response]
@@ -108,7 +110,7 @@ The test should also verify the negative case:
 
 ```mermaid
 flowchart TD
-  A[Client retries once] --> B[Backend returns JWE_UNKNOWN_KID again]
+  A[Client retries once] --> B[Backend returns JWE_UNKNOWN_KEY_ID again]
   B --> C[Client returns a typed error]
   C --> D[Client does not retry again]
 ```
@@ -136,6 +138,7 @@ src/lib/testing/
   jwe-test-fixtures.ts
   jwe-test-keys.ts
   jwe-test-backend.ts
+  jwe-test-trace.ts
 ```
 
 ### `jwe-test-fixtures.ts`
@@ -175,8 +178,12 @@ Useful helpers include:
 - decrypting request bodies,
 - decrypting `JWE-Response-Key`,
 - flushing encrypted responses,
-- returning `JWE_UNKNOWN_KID`,
+- returning `JWE_UNKNOWN_KEY_ID`,
 - returning malformed or unsupported JWE responses.
+
+### `jwe-test-trace.ts`
+
+Provides the protocol-trace helper used by the integration spec to print a step-by-step, redacted view of the JWE flow. See [Protocol trace](#protocol-trace) for what it shows and what it must redact.
 
 ## Protocol trace
 

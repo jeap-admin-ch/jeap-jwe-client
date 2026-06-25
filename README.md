@@ -6,14 +6,14 @@ Angular's functional `HttpClient` interceptor mechanism, so application code can
 ordinary `HttpClient` requests and typed JSON responses while protected requests are transported as
 `application/jose`. It provides:
 
-* Loading backend JWE configuration from `/.well-known/jwe-config`
+* Loading backend JWE configuration from `/.well-known/jwe-configuration`
 * Loading backend public encryption keys from the configured JWKS endpoint
 * Protecting requests to a configured backend origin by default, with blacklist-style exclude rules
 * Encrypting JSON request bodies as compact JWE using `RSA-OAEP-256` and `A256GCM`
 * Sending a request-local response content encryption key in the `JWE-Response-Key` header
 * Setting `Accept: application/jose` for protected requests
 * Decrypting encrypted backend responses using `alg: dir` and `enc: A256GCM`
-* Refreshing JWKS and retrying once when the backend returns `JWE_UNKNOWN_KID`
+* Refreshing JWKS and retrying once when the backend returns `JWE_UNKNOWN_KEY_ID`
 * Typed client-side errors through `JeapJweError`
 * Integration tests with a mocked backend and real JWE encryption/decryption
 
@@ -25,9 +25,9 @@ Start with [Getting started](docs/getting-started.md), then follow the links bel
 |---------------------------------------------------------------------------------------|--------------------------------------------------------------------------------------------------------------------------|
 | Getting started (add the dependency, configure the provider and interceptor)          | [docs/getting-started.md](docs/getting-started.md)                     |
 | Configuration reference (`JeapJweClientConfig`, excludes, backend config loading)     | [docs/configuration.md](docs/configuration.md)                         |
-| Backend contract (`/.well-known/jwe-config`, JWKS, headers, response encryption)      | [docs/backend-contract.md](docs/backend-contract.md)                   |
+| Backend contract (`/.well-known/jwe-configuration`, JWKS, headers, response encryption)      | [docs/backend-contract.md](docs/backend-contract.md)                   |
 | Architecture (interceptor, matcher, config service, JWKS cache, encryptor, decryptor) | [docs/architecture.md](docs/architecture.md)                           |
-| Key rotation and retry behavior (`keys[0]`, refresh, `JWE_UNKNOWN_KID`)               | [docs/key-rotation.md](docs/key-rotation.md)                           |
+| Key rotation and retry behavior (`keys[0]`, refresh, `JWE_UNKNOWN_KEY_ID`)               | [docs/key-rotation.md](docs/key-rotation.md)                           |
 | Error handling (`JeapJweError`, retryable and non-retryable failures)                 | [docs/error-handling.md](docs/error-handling.md)                       |
 | Testing (unit tests, integration tests, protocol trace for reviews)                   | [docs/testing.md](docs/testing.md)                                     |
 | Security considerations (logging, CEKs, JWKs, plaintext, compact JWE values)          | [docs/security-considerations.md](docs/security-considerations.md)     |
@@ -35,7 +35,7 @@ Start with [Getting started](docs/getting-started.md), then follow the links bel
 
 ## Usage
 
-Register the client configuration and the functional interceptor in the Angular application:
+Register the client configuration and the functional interceptor in the Angular application. The library does not call `provideHttpClient` itself: the consuming application owns its `HttpClient` setup and must register the `jeapJweInterceptor` alongside `provideJeapJweClient`, as shown below.
 
 ```ts
 import {ApplicationConfig} from '@angular/core';
@@ -59,7 +59,7 @@ With this configuration, the client loads the backend JWE configuration and JWKS
 backend origin:
 
 ```text
-GET https://api.example.ch/.well-known/jwe-config
+GET https://api.example.ch/.well-known/jwe-configuration
 GET https://api.example.ch/.well-known/jwks.json
 ```
 

@@ -16,6 +16,10 @@ The application continues to use ordinary Angular `HttpClient` calls and typed J
 library transforms protected requests into `application/jose` transport requests and decrypts
 encrypted backend responses back into normal Angular responses.
 
+The library does not call `provideHttpClient` itself. The consuming application owns its `HttpClient`
+setup and registers the `jeapJweInterceptor` via
+`provideHttpClient(withInterceptors([jeapJweInterceptor]))` alongside `provideJeapJweClient({...})`.
+
 ## Repository layout
 
 ```text
@@ -134,7 +138,7 @@ Default excluded paths:
 
 Important protocol rules:
 
-- Backend config endpoint: `/.well-known/jwe-config`
+- Backend config endpoint: `/.well-known/jwe-configuration`
 - Default JWKS endpoint: `/.well-known/jwks.json`
 - Protected request media type: `application/jose`
 - Response key header: `JWE-Response-Key`
@@ -142,7 +146,7 @@ Important protocol rules:
 - Response key JWE: `alg: RSA-OAEP-256`, `enc: A256GCM`
 - Backend response JWE: `alg: dir`, `enc: A256GCM`
 - Response CEK length: 32 bytes
-- Backend retry error code: `JWE_UNKNOWN_KID`
+- Backend retry error code: `JWE_UNKNOWN_KEY_ID`
 
 The backend publishes public JWKS keys only. The client uses the first JWKS key, `keys[0]`, for new
 request encryption and must not reorder keys.
@@ -156,10 +160,11 @@ Key behavior:
 - `origin` is required.
 - `enabled` defaults to `true`.
 - `loadBackendConfig` defaults to `true`.
-- `jweConfigPath` defaults to `/.well-known/jwe-config`.
+- `jweConfigPath` defaults to `/.well-known/jwe-configuration`.
 - `jwksPath` defaults to `/.well-known/jwks.json`.
-- `excludeMergeStrategy` defaults to `extend`.
 - `useDefaultExcludes` defaults to `true`.
+
+Exclude rules are owned entirely by the client. The backend does not publish exclude rules.
 
 Exclude handling is blacklist-based:
 
@@ -188,12 +193,12 @@ Keep error messages safe. Do not include:
 The backend only needs one retryable client-recognized code:
 
 ```text
-JWE_UNKNOWN_KID
+JWE_UNKNOWN_KEY_ID
 ```
 
 This means the key identifier is unknown, stale, inactive, or no longer accepted by the backend.
 The client refreshes JWKS and retries the original request once. If the retry also fails with
-`JWE_UNKNOWN_KID`, the typed error is returned to the application. Do not introduce retry loops.
+`JWE_UNKNOWN_KEY_ID`, the typed error is returned to the application. Do not introduce retry loops.
 
 ## Security conventions
 

@@ -15,7 +15,6 @@ export interface JeapJweClientConfig {
   loadBackendConfig?: boolean;
   exclude?: JeapJweExcludeRule[];
   useDefaultExcludes?: boolean;
-  excludeMergeStrategy?: 'extend' | 'override';
 }
 
 export interface JeapJweExcludeRule {
@@ -34,7 +33,7 @@ provideJeapJweClient({
 
 ## Configuration modes
 
-You can either load configuration from the backend, define it fully in the frontend, or combine both approaches.
+You can either load protocol metadata from the backend or define the client-side configuration fully in the frontend. Exclude rules are always owned by the client in both modes.
 
 ### Backend-provided configuration
 
@@ -46,28 +45,27 @@ provideJeapJweClient({
 });
 ```
 
-The client loads backend configuration from:
+The client loads backend metadata from:
 
 ```text
-https://api.example.ch/.well-known/jwe-config
+https://api.example.ch/.well-known/jwe-configuration
 ```
 
 The backend can provide values such as:
 
 ```json
 {
-  "jwksUri": "/.well-known/jwks.json",
-  "refreshIntervalSeconds": 300,
-  "exclude": [
-    {
-      "method": "*",
-      "path": "/actuator/**"
-    }
-  ]
+  "contentTypeAllowlist": ["application/json"],
+  "keyEncryptionAlgorithm": "RSA-OAEP-256",
+  "contentEncryptionMethod": "A256GCM",
+  "jwksPath": "/.well-known/jwks.json",
+  "responseKeyHeader": "JWE-Response-Key"
 }
 ```
 
-Use this mode when the backend should centrally manage JWE discovery information and backend-owned exclude rules.
+The client maps the backend `jwksPath` to the JWKS URL it loads. The backend does not publish exclude rules or a JWKS refresh interval.
+
+Use this mode when the backend should centrally manage JWE protocol settings such as the JWKS path, the content-type allowlist, and the response-key header.
 
 ### Frontend-only configuration
 
@@ -93,33 +91,15 @@ In this mode:
 
 The backend still needs to provide the JWKS endpoint and support encrypted requests and responses.
 
-### Combined configuration
-
-By default, backend excludes and local excludes are combined.
-
-```ts
-provideJeapJweClient({
-  origin: 'https://api.example.ch',
-  exclude: [
-    {method: 'GET', path: '/local-public/**'},
-  ],
-});
-```
-
-This allows the backend to publish shared or platform-level excludes while the frontend adds application-specific excludes.
-
-The behavior is controlled with [`excludeMergeStrategy`](#exclude-merge-strategy).
-
 ## Defaults
 
-| Option                 |                   Default | Description                                                                        |
-|------------------------|--------------------------:|------------------------------------------------------------------------------------|
-| `enabled`              |                    `true` | Enables or disables JWE protection globally                                        |
-| `jweConfigPath`        | `/.well-known/jwe-config` | Backend JWE configuration endpoint                                                 |
-| `jwksPath`             |  `/.well-known/jwks.json` | JWKS endpoint used when backend config loading is disabled or does not override it |
-| `loadBackendConfig`    |                    `true` | Loads JWE configuration from the backend                                           |
-| `useDefaultExcludes`   |                    `true` | Adds default excludes for discovery and health endpoints                           |
-| `excludeMergeStrategy` |                  `extend` | Combines local and backend exclude rules by default                                |
+| Option               |                         Default | Description                                                                        |
+|----------------------|--------------------------------:|------------------------------------------------------------------------------------|
+| `enabled`            |                          `true` | Enables or disables JWE protection globally                                        |
+| `jweConfigPath`      | `/.well-known/jwe-configuration` | Backend JWE configuration endpoint                                                 |
+| `jwksPath`           |        `/.well-known/jwks.json` | JWKS endpoint used when backend config loading is disabled or does not override it |
+| `loadBackendConfig`  |                          `true` | Loads JWE configuration from the backend                                           |
+| `useDefaultExcludes` |                          `true` | Adds default excludes for discovery and health endpoints                           |
 
 ## `enabled`
 
@@ -175,7 +155,7 @@ is resolved by the browser before origin matching is applied.
 Default:
 
 ```text
-/.well-known/jwe-config
+/.well-known/jwe-configuration
 ```
 
 Example:
@@ -183,14 +163,14 @@ Example:
 ```ts
 provideJeapJweClient({
   origin: 'https://api.example.ch',
-  jweConfigPath: '/custom/jwe-config',
+  jweConfigPath: '/custom/jwe-configuration',
 });
 ```
 
 The final URL is resolved against `origin`:
 
 ```text
-https://api.example.ch/custom/jwe-config
+https://api.example.ch/custom/jwe-configuration
 ```
 
 This setting is only used when `loadBackendConfig` is enabled.
@@ -220,8 +200,9 @@ When `loadBackendConfig` is disabled:
 
 - no request to `jweConfigPath` is made
 - the local `jwksPath` is used
-- backend-provided excludes are not loaded
 - local exclude rules and default excludes apply
+
+Exclude rules are owned by the client in either mode, so disabling backend configuration loading does not change how exclusions are determined.
 
 ## `jwksPath`
 
@@ -248,9 +229,17 @@ The final URL is resolved against `origin`:
 https://api.example.ch/security/jwks.json
 ```
 
-If backend configuration loading is enabled, the backend configuration may provide the JWKS URI.
+If backend configuration loading is enabled, the backend metadata may provide a `jwksPath`, which the client maps to the JWKS URL it loads.
+
+## Content-type allowlist
+
+The backend advertises a `contentTypeAllowlist` in its metadata. The client validates the outgoing request `cty` against this allowlist. The default allowlist is `["application/json"]`, used when the backend metadata does not advertise one.
+
+A request body whose content type is not in the allowlist fails locally with `JWE_UNSUPPORTED_MEDIA_TYPE` before any request is sent.
 
 ## Exclude rules
+
+Exclude rules are owned entirely by the client. The backend does not publish exclude rules. Define application-specific exclusions with the `exclude` option; default excludes apply unless `useDefaultExcludes` is set to `false`.
 
 Exclude rules use blacklist semantics:
 
@@ -315,7 +304,7 @@ The default excludes are:
 ]
 ```
 
-These prevent protocol bootstrapping endpoints and technical health endpoints from being protected.
+These keep application discovery and technical health endpoints from being protected with encryption.
 
 Disable default excludes only when you explicitly want full control:
 
@@ -326,47 +315,20 @@ provideJeapJweClient({
 });
 ```
 
-Be careful when disabling default excludes. The client must still be able to load the JWE configuration and JWKS without creating a protected-request bootstrap loop.
+Disabling default excludes does not risk a protocol bootstrap loop. The configuration and JWKS requests always bypass the interceptor because the client issues them through Angular's `HttpBackend` directly, so those requests are never encrypted regardless of excludes. Default excludes only protect your application discovery and health endpoints; removing them simply means those endpoints would be protected like any other.
 
-## Exclude merge strategy
+## Server-Sent Events
 
-Backend configuration can also provide exclude rules.
-
-`excludeMergeStrategy` controls how backend excludes and local excludes are combined.
-
-### `extend`
-
-This is the default.
-
-Backend excludes and local excludes are combined.
+The client does not exclude jEAP Server-Sent Events (SSE) endpoints by default. If your application consumes SSE endpoints on the protected origin, add them to `exclude` so they are forwarded unchanged:
 
 ```ts
 provideJeapJweClient({
   origin: 'https://api.example.ch',
-  excludeMergeStrategy: 'extend',
   exclude: [
-    {method: 'GET', path: '/local-public/**'},
+    {method: 'GET', path: '/sse/**'},
   ],
 });
 ```
-
-Use `extend` when the backend owns shared protocol or platform exclusions and the Angular application adds application-specific exclusions.
-
-### `override`
-
-Only local excludes are used. Backend excludes are ignored.
-
-```ts
-provideJeapJweClient({
-  origin: 'https://api.example.ch',
-  excludeMergeStrategy: 'override',
-  exclude: [
-    {method: '*', path: '/only-this/**'},
-  ],
-});
-```
-
-Use `override` when the Angular application must fully control the exclude list.
 
 ## Configuration recipes
 
@@ -405,26 +367,12 @@ provideJeapJweClient({
 
 Use this when some application endpoints should stay unprotected.
 
-### Combine backend and frontend excludes
+### Define excludes without default excludes
 
 ```ts
 provideJeapJweClient({
   origin: 'https://api.example.ch',
-  excludeMergeStrategy: 'extend',
-  exclude: [
-    {method: 'GET', path: '/frontend-public/**'},
-  ],
-});
-```
-
-Use this when the backend provides shared excludes and the frontend adds its own excludes.
-
-### Replace backend excludes completely
-
-```ts
-provideJeapJweClient({
-  origin: 'https://api.example.ch',
-  excludeMergeStrategy: 'override',
+  useDefaultExcludes: false,
   exclude: [
     {method: '*', path: '/public/**'},
     {method: '*', path: '/health'},
@@ -432,4 +380,4 @@ provideJeapJweClient({
 });
 ```
 
-Use this when backend-provided excludes should not be applied.
+Use this when the Angular application must fully control the exclude list without the built-in defaults.

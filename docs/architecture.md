@@ -22,7 +22,7 @@ flowchart TD
 
 The interceptor is the main entry point. It decides whether a request is protected, delegates encryption, forwards the request, and decrypts encrypted responses.
 
-It also handles the retry flow for the retryable backend error `JWE_UNKNOWN_KID`.
+It also handles the retry flow for the retryable backend error `JWE_UNKNOWN_KEY_ID`.
 
 ### Endpoint matcher
 
@@ -36,7 +36,7 @@ It ignores query parameters for path matching.
 
 ### Config service
 
-The config service combines local Angular configuration with optional backend configuration from `/.well-known/jwe-config`.
+The config service combines local Angular configuration with optional backend metadata from `/.well-known/jwe-configuration`. Exclude rules are owned by the client; the backend does not publish them.
 
 It caches the backend config load and avoids loading backend config for locally excluded endpoints.
 
@@ -90,7 +90,7 @@ The response CEK must never be logged, persisted, cached globally, or exposed ou
 
 ```mermaid
 flowchart TD
-  A[Protected request] --> B["Backend returns 400 application/problem+json, code=JWE_UNKNOWN_KID"]
+  A[Protected request] --> B["Backend returns 400 application/problem+json, code=JWE_UNKNOWN_KEY_ID"]
   B --> C[Client refreshes JWKS]
   C --> D[Client encrypts original request again]
   D --> E[Client creates a new response CEK]
