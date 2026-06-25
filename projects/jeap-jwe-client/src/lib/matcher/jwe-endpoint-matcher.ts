@@ -7,7 +7,13 @@ import {
   JeapJweExcludeRule,
   JeapJweResolvedClientConfig,
 } from '../config/jeap-jwe-client-config';
+import {
+  DEFAULT_CONTENT_TYPE_ALLOWLIST,
+  DEFAULT_JWKS_PATH,
+  DEFAULT_REFRESH_INTERVAL_SECONDS,
+} from '../config/jeap-jwe-defaults';
 import { JEAP_JWE_CLIENT_CONFIG } from '../config/jeap-jwe-client.tokens';
+import { JEAP_JWE_RESPONSE_KEY_HEADER } from '../crypto/jwe-algorithms';
 
 export const JEAP_JWE_DEFAULT_EXCLUDE_RULES: JeapJweExcludeRule[] = [
   { method: '*', path: '/.well-known/**' },
@@ -51,7 +57,10 @@ export class JweEndpointMatcher {
       url: requestUrl.toString(),
       origin: requestUrl.origin,
       path: requestPath,
-      config,
+      protocol: {
+        responseKeyHeader: config.responseKeyHeader,
+        contentTypeAllowlist: config.contentTypeAllowlist,
+      },
     };
   }
 
@@ -158,9 +167,11 @@ export class JweEndpointMatcher {
   ): JeapJweResolvedClientConfig {
     return {
       ...config,
-      jwksUri: config.jwksPath ?? '/.well-known/jwks.json',
-      refreshIntervalSeconds: 300,
+      jwksUri: config.jwksPath ?? DEFAULT_JWKS_PATH,
+      refreshIntervalSeconds: DEFAULT_REFRESH_INTERVAL_SECONDS,
       exclude: config.exclude ?? [],
+      responseKeyHeader: JEAP_JWE_RESPONSE_KEY_HEADER,
+      contentTypeAllowlist: [...DEFAULT_CONTENT_TYPE_ALLOWLIST],
     };
   }
 }

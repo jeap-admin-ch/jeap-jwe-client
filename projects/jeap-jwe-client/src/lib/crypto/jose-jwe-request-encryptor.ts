@@ -12,8 +12,8 @@ import {
   JEAP_JWE_MEDIA_TYPE,
   JEAP_JWE_REQUEST_ALGORITHM,
   JEAP_JWE_RESPONSE_CEK_BYTES,
-  JEAP_JWE_RESPONSE_KEY_HEADER,
 } from './jwe-algorithms';
+import { isAllowedContentType } from './media-type';
 import {
   JeapJweEncryptedRequest,
   JeapJweRequestContext,
@@ -39,9 +39,13 @@ export class JoseJweRequestEncryptor extends JweRequestEncryptor {
       /**
        * Validate and serialize the body before selecting a backend key.
        *
-       * Unsupported media types must fail without accessing JWKS.
+       * Media types outside the backend allowlist must fail without accessing
+       * JWKS.
        */
-      const requestPayload = this.serializeRequestPayload(request);
+      const requestPayload = this.serializeRequestPayload(
+        request,
+        match.protocol.contentTypeAllowlist
+      );
 
       return this.keySelector.selectCurrentKey().pipe(
         switchMap(key =>
@@ -85,7 +89,7 @@ export class JoseJweRequestEncryptor extends JweRequestEncryptor {
         responseType: 'text',
         setHeaders: {
           Accept: JEAP_JWE_MEDIA_TYPE,
-          [JEAP_JWE_RESPONSE_KEY_HEADER]: encryptedResponseKey,
+          [match.protocol.responseKeyHeader]: encryptedResponseKey,
           ...(requestPayload
             ? { 'Content-Type': JEAP_JWE_MEDIA_TYPE }
             : {}),
@@ -152,7 +156,8 @@ export class JoseJweRequestEncryptor extends JweRequestEncryptor {
   }
 
   private serializeRequestPayload(
-    request: HttpRequest<unknown>
+    request: HttpRequest<unknown>,
+    contentTypeAllowlist: readonly string[]
   ): SerializedRequestPayload | undefined {
     if (request.body === null || request.body === undefined) {
       return undefined;
@@ -161,10 +166,10 @@ export class JoseJweRequestEncryptor extends JweRequestEncryptor {
     const explicitContentType = request.headers.get('Content-Type');
     const originalContentType = explicitContentType ?? 'application/json';
 
-    if (!this.isJsonMediaType(originalContentType)) {
+    if (!isAllowedContentType(originalContentType, contentTypeAllowlist)) {
       throw new JeapJweError(
         'JWE_UNSUPPORTED_MEDIA_TYPE',
-        `Cannot encrypt request body with media type "${originalContentType}".`
+        `The backend does not accept request bodies with media type "${originalContentType}".`
       );
     }
 
@@ -220,14 +225,5 @@ export class JoseJweRequestEncryptor extends JweRequestEncryptor {
         'The selected JWK does not satisfy the required JWE encryption policy.'
       );
     }
-  }
-
-  private isJsonMediaType(contentType: string): boolean {
-    const baseMediaType = contentType.split(';', 1)[0].trim().toLowerCase();
-
-    return (
-      baseMediaType === 'application/json' ||
-      baseMediaType.endsWith('+json')
-    );
   }
 }

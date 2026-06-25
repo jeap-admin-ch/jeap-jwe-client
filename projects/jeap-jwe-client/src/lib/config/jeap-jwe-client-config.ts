@@ -1,5 +1,3 @@
-export type JeapJweExcludeMergeStrategy = 'extend' | 'override';
-
 export interface JeapJweClientConfig {
   /**
    * Global switch.
@@ -19,16 +17,16 @@ export interface JeapJweClientConfig {
 
   /**
    * Local JWKS path.
-   * Used as fallback when the backend config does not provide jwksUri.
+   * Used as fallback when the backend metadata does not provide a JWKS path.
    *
    * Defaults to "/.well-known/jwks.json".
    */
   jwksPath?: string;
 
   /**
-   * Backend JWE configuration path.
+   * Backend JWE configuration (metadata) path.
    *
-   * Defaults to "/.well-known/jwe-config".
+   * Defaults to "/.well-known/jwe-configuration".
    */
   jweConfigPath?: string;
 
@@ -40,11 +38,11 @@ export interface JeapJweClientConfig {
   loadBackendConfig?: boolean;
 
   /**
-   * Local exclude rules.
+   * Exclude rules owned by the client.
    *
-   * Pure blacklist semantics:
-   * every request targeting the configured backend origin is protected
-   * unless it matches an exclude rule.
+   * Pure blacklist semantics: every request targeting the configured backend
+   * origin is protected unless it matches an exclude rule. The backend does not
+   * publish exclude rules, so path exclusions are defined entirely on the client.
    */
   exclude?: JeapJweExcludeRule[];
 
@@ -54,38 +52,43 @@ export interface JeapJweClientConfig {
    * Defaults to true.
    */
   useDefaultExcludes?: boolean;
-
-  /**
-   * Controls how backend-provided exclude rules and local exclude rules are combined.
-   *
-   * extend:
-   *   backend exclude rules + local exclude rules
-   *
-   * override:
-   *   only local exclude rules
-   *
-   * Defaults to "extend".
-   */
-  excludeMergeStrategy?: JeapJweExcludeMergeStrategy;
 }
 
+/**
+ * Backend protocol metadata served at the JWE configuration endpoint.
+ *
+ * The field names follow the backend contract. The backend does not publish
+ * exclude rules or a refresh interval, so those are owned by the client.
+ */
 export interface JeapJweBackendConfigResponse {
   /**
-   * JWKS URI returned by the backend.
+   * Content types the backend accepts as JWE payloads (the `cty` value).
+   */
+  contentTypeAllowlist?: string[];
+
+  /**
+   * Advertised key management algorithm (informational).
+   */
+  keyEncryptionAlgorithm?: string;
+
+  /**
+   * Advertised content encryption method (informational).
+   */
+  contentEncryptionMethod?: string;
+
+  /**
+   * Path of the JWKS endpoint serving the public keys.
    *
    * Example: "/.well-known/jwks.json"
    */
-  jwksUri?: string;
+  jwksPath?: string;
 
   /**
-   * Suggested JWKS refresh interval in seconds.
+   * Name of the header carrying the response-key envelope.
+   *
+   * Example: "JWE-Response-Key"
    */
-  refreshIntervalSeconds?: number;
-
-  /**
-   * Backend-provided exclude rules.
-   */
-  exclude?: JeapJweExcludeRule[];
+  responseKeyHeader?: string;
 }
 
 export interface JeapJweResolvedClientConfig extends JeapJweClientConfig {
@@ -100,9 +103,37 @@ export interface JeapJweResolvedClientConfig extends JeapJweClientConfig {
   refreshIntervalSeconds: number;
 
   /**
-   * Effective exclude rules after merging local and backend configuration.
+   * Effective exclude rules.
    */
   exclude: JeapJweExcludeRule[];
+
+  /**
+   * Effective header name carrying the response-key envelope.
+   */
+  responseKeyHeader: string;
+
+  /**
+   * Effective content types the backend accepts as JWE payloads.
+   */
+  contentTypeAllowlist: string[];
+}
+
+/**
+ * Per-request protocol settings the encryption pipeline needs.
+ *
+ * Intentionally minimal: it carries only the values used while protecting a
+ * request, not the full resolved configuration.
+ */
+export interface JeapJweProtocolSettings {
+  /**
+   * Header name carrying the encrypted response CEK.
+   */
+  readonly responseKeyHeader: string;
+
+  /**
+   * Content types the backend accepts as JWE payloads (the `cty` value).
+   */
+  readonly contentTypeAllowlist: readonly string[];
 }
 
 export interface JeapJweExcludeRule {
@@ -141,7 +172,7 @@ export interface JeapJweEndpointMatch {
   path: string;
 
   /**
-   * Effective client configuration used for this request.
+   * Protocol settings used while protecting this request.
    */
-  config: JeapJweResolvedClientConfig;
+  protocol: JeapJweProtocolSettings;
 }

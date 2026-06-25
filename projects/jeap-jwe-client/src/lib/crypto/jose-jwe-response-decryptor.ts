@@ -9,6 +9,7 @@ import {
   JEAP_JWE_MEDIA_TYPE,
   JEAP_JWE_RESPONSE_ALGORITHM,
 } from './jwe-algorithms';
+import { baseMediaType, isJsonMediaType } from './media-type';
 import { JeapJweRequestContext } from './jwe-request-encryptor';
 import { JweResponseDecryptor } from './jwe-response-decryptor';
 
@@ -118,7 +119,7 @@ export class JoseJweResponseDecryptor extends JweResponseDecryptor {
       return plaintext;
     }
 
-    if (this.isJsonMediaType(contentType)) {
+    if (isJsonMediaType(contentType)) {
       try {
         return plaintext.length === 0 ? null : JSON.parse(plaintext);
       } catch (cause) {
@@ -160,18 +161,6 @@ export class JoseJweResponseDecryptor extends JweResponseDecryptor {
       return false;
     }
 
-    return contentType
-      .split(';', 1)[0]
-      .trim()
-      .toLowerCase() === JEAP_JWE_MEDIA_TYPE;
-  }
-
-  private isJsonMediaType(contentType: string): boolean {
-    const baseMediaType = contentType.split(';', 1)[0].trim().toLowerCase();
-
-    return (
-      baseMediaType === 'application/json' ||
-      baseMediaType.endsWith('+json')
-    );
+    return baseMediaType(contentType) === JEAP_JWE_MEDIA_TYPE;
   }
 }
