@@ -6,11 +6,9 @@ import { JwksRefreshService } from './jwks-refresh.service';
 
 describe('JwksRefreshService', () => {
   it('refreshes the JWKS periodically after the configured interval', fakeAsync(() => {
-    const jwksCache = jasmine.createSpyObj<JwksCache>('JwksCache', [
-      'refresh',
-    ]);
+    const jwksCache = jasmine.createSpyObj<JwksCache>('JwksCache', ['refresh']);
 
-    // @ts-ignore
+    // @ts-expect-error narrow snapshot stub is irrelevant to scheduling
     jwksCache.refresh.and.returnValue(of(undefined));
 
     const refreshService = new JwksRefreshService(jwksCache);
@@ -33,13 +31,11 @@ describe('JwksRefreshService', () => {
   }));
 
   it('continues later refresh attempts after one refresh fails', fakeAsync(() => {
-    const jwksCache = jasmine.createSpyObj<JwksCache>('JwksCache', [
-      'refresh',
-    ]);
+    const jwksCache = jasmine.createSpyObj<JwksCache>('JwksCache', ['refresh']);
 
     jwksCache.refresh.and.returnValues(
       throwError(() => new Error('Temporary backend failure')),
-      // @ts-ignore
+      // @ts-expect-error narrow snapshot stub is irrelevant to scheduling
       of(undefined)
     );
 

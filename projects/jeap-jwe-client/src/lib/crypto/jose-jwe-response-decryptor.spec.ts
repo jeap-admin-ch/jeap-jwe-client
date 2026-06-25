@@ -151,10 +151,7 @@ describe('JoseJweResponseDecryptor', () => {
     });
 
     const decryptedResponse = await firstValueFrom(
-      decryptor.decrypt(
-        encryptedResponse,
-        createContext(responseCek, 'text')
-      )
+      decryptor.decrypt(encryptedResponse, createContext(responseCek, 'text'))
     );
 
     expect(decryptedResponse.body).toBe('Service is available');
@@ -210,10 +207,7 @@ describe('JoseJweResponseDecryptor', () => {
     let actualError: unknown;
 
     await firstValueFrom(
-      decryptor.decrypt(
-        encryptedResponse,
-        createContext(wrongDecryptionCek)
-      )
+      decryptor.decrypt(encryptedResponse, createContext(wrongDecryptionCek))
     ).catch(error => {
       actualError = error;
     });

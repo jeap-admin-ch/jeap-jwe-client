@@ -47,18 +47,15 @@ export class JoseJweRequestEncryptor extends JweRequestEncryptor {
         match.protocol.contentTypeAllowlist
       );
 
-      return this.keySelector.selectCurrentKey().pipe(
-        switchMap(key =>
-          from(
-            this.createProtectedRequest(
-              request,
-              match,
-              key,
-              requestPayload
+      return this.keySelector
+        .selectCurrentKey()
+        .pipe(
+          switchMap(key =>
+            from(
+              this.createProtectedRequest(request, match, key, requestPayload)
             )
           )
-        )
-      );
+        );
     });
   }
 
@@ -90,9 +87,7 @@ export class JoseJweRequestEncryptor extends JweRequestEncryptor {
         setHeaders: {
           Accept: JEAP_JWE_MEDIA_TYPE,
           [match.protocol.responseKeyHeader]: encryptedResponseKey,
-          ...(requestPayload
-            ? { 'Content-Type': JEAP_JWE_MEDIA_TYPE }
-            : {}),
+          ...(requestPayload ? { 'Content-Type': JEAP_JWE_MEDIA_TYPE } : {}),
         },
       });
 

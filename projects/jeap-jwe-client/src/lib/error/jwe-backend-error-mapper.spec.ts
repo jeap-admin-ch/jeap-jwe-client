@@ -4,7 +4,6 @@ import { JeapJweError } from './jeap-jwe-error';
 import { mapRetryableBackendJweError } from './jwe-backend-error-mapper';
 
 describe('mapRetryableBackendJweError', () => {
-
   it('maps an unknown-kid problem response to a retryable typed error', () => {
     const backendError = new HttpErrorResponse({
       status: 400,

@@ -125,7 +125,9 @@ describe('JweEndpointMatcher', () => {
       exclude: [{ method: '*', path: '/api/public/**' }],
     });
 
-    const protectedResult = matcher.match(request('GET', '/api/private/persons'));
+    const protectedResult = matcher.match(
+      request('GET', '/api/private/persons')
+    );
     const excludedResult = matcher.match(request('GET', '/api/public/status'));
 
     expect(protectedResult).not.toBeNull();
@@ -263,7 +265,9 @@ describe('JweEndpointMatcher', () => {
     expect(matcher.match(request('GET', '/api/public/status'))).toBeNull();
     expect(matcher.match(request('GET', '/api/public/v1/status'))).toBeNull();
 
-    const protectedResult = matcher.match(request('GET', '/api/private/status'));
+    const protectedResult = matcher.match(
+      request('GET', '/api/private/status')
+    );
 
     expect(protectedResult).not.toBeNull();
   });

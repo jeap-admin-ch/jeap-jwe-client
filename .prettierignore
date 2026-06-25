@@ -1,0 +1,6 @@
+dist
+out-tsc
+coverage
+node_modules
+package-lock.json
+THIRD-PARTY-LICENSES.md

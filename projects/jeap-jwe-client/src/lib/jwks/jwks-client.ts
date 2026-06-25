@@ -33,9 +33,7 @@ export class JwksClient {
     this.backendHttp = new HttpClient(httpBackend);
   }
 
-  fetch(
-    config: JeapJweResolvedClientConfig
-  ): Observable<JeapJwksSnapshot> {
+  fetch(config: JeapJweResolvedClientConfig): Observable<JeapJwksSnapshot> {
     const jwksUrl = this.resolveJwksUrl(config);
 
     return this.backendHttp.get<unknown>(jwksUrl).pipe(
@@ -108,10 +106,7 @@ export class JwksClient {
     };
   }
 
-  private toPublicRsaJwk(
-    candidate: unknown,
-    index: number
-  ): JeapJwePublicJwk {
+  private toPublicRsaJwk(candidate: unknown, index: number): JeapJwePublicJwk {
     if (!this.isRecord(candidate)) {
       throw this.invalidKey(index);
     }

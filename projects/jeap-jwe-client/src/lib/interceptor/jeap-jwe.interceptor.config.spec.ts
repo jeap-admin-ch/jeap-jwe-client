@@ -127,9 +127,7 @@ describe('jeapJweInterceptor with backend configuration loading', () => {
            */
           loadBackendConfig: true,
 
-          exclude: [
-            { method: '*', path: '/api/local-public/**' },
-          ],
+          exclude: [{ method: '*', path: '/api/local-public/**' }],
         }),
 
         /**
@@ -263,9 +261,7 @@ describe('jeapJweInterceptor with backend configuration loading', () => {
     const backendConfigRequest = httpMock.expectOne(configUrl);
 
     backendConfigRequest.flush({
-      exclude: [
-        { method: '*', path: '/api/backend-public/**' },
-      ],
+      exclude: [{ method: '*', path: '/api/backend-public/**' }],
     });
 
     const apiRequest = httpMock.expectOne('/api/backend-public/status');
@@ -325,9 +321,7 @@ describe('jeapJweInterceptor with backend configuration loading', () => {
      * The config endpoint is part of the default blacklist.
      * Therefore it must not trigger a second recursive config request.
      */
-    const configEndpointRequest = httpMock.expectOne(
-      '/.well-known/jwe-config'
-    );
+    const configEndpointRequest = httpMock.expectOne('/.well-known/jwe-config');
 
     expect(
       configEndpointRequest.request.headers.has('JWE-Response-Key')
@@ -353,7 +347,8 @@ describe('jeapJweInterceptor with backend configuration loading', () => {
     let actualError: unknown;
 
     http.get('/api/persons/123').subscribe({
-      next: () => fail('The API request must not succeed when config loading fails.'),
+      next: () =>
+        fail('The API request must not succeed when config loading fails.'),
       error: error => {
         actualError = error;
       },

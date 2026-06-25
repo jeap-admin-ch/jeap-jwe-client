@@ -44,14 +44,13 @@ export async function createJeapJweTestKeyPair(
   };
 }
 
-function requireJwkStringParameter(
-  jwk: JWK,
-  parameterName: keyof JWK
-): string {
+function requireJwkStringParameter(jwk: JWK, parameterName: keyof JWK): string {
   const value = jwk[parameterName];
 
   if (typeof value !== 'string') {
-    throw new Error(`Generated test JWK is missing "${String(parameterName)}".`);
+    throw new Error(
+      `Generated test JWK is missing "${String(parameterName)}".`
+    );
   }
 
   return value;

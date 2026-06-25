@@ -3,11 +3,7 @@ import {
   HttpTestingController,
   TestRequest,
 } from '@angular/common/http/testing';
-import {
-  CompactEncrypt,
-  compactDecrypt,
-  decodeProtectedHeader,
-} from 'jose';
+import { CompactEncrypt, compactDecrypt, decodeProtectedHeader } from 'jose';
 
 import {
   JEAP_JWE_CONTENT_ENCRYPTION,
@@ -18,8 +14,8 @@ import {
   JEAP_JWE_RESPONSE_KEY_HEADER,
 } from '../crypto/jwe-algorithms';
 import { JeapJwePublicJwk } from '../jwks/jwk.model';
-import {JWE_TEST_CONFIG_PATH, JWE_TEST_JWKS_PATH} from './jwe-test-fixtures';
-import {JeapJweBackendConfigResponse} from "../config/jeap-jwe-client-config";
+import { JWE_TEST_CONFIG_PATH, JWE_TEST_JWKS_PATH } from './jwe-test-fixtures';
+import { JeapJweBackendConfigResponse } from '../config/jeap-jwe-client-config';
 
 const PROBLEM_JSON_MEDIA_TYPE = 'application/problem+json';
 const OCTET_STREAM_MEDIA_TYPE = 'application/octet-stream';
@@ -47,7 +43,9 @@ export class JeapJweTestBackend {
     const request = await this.expectRequestAsync(method, path);
 
     expect(request.request.headers.get('Accept')).toBe(JEAP_JWE_MEDIA_TYPE);
-    expect(request.request.headers.has(JEAP_JWE_RESPONSE_KEY_HEADER)).toBeTrue();
+    expect(
+      request.request.headers.has(JEAP_JWE_RESPONSE_KEY_HEADER)
+    ).toBeTrue();
 
     return request;
   }
@@ -56,7 +54,9 @@ export class JeapJweTestBackend {
     const request = this.expectRequest(method, path);
 
     expect(request.request.headers.get('Accept')).toBe(JEAP_JWE_MEDIA_TYPE);
-    expect(request.request.headers.has(JEAP_JWE_RESPONSE_KEY_HEADER)).toBeTrue();
+    expect(
+      request.request.headers.has(JEAP_JWE_RESPONSE_KEY_HEADER)
+    ).toBeTrue();
 
     return request;
   }
@@ -64,14 +64,18 @@ export class JeapJweTestBackend {
   expectPlainRequest(method: string, path: string): TestRequest {
     const request = this.expectRequest(method, path);
 
-    expect(request.request.headers.has(JEAP_JWE_RESPONSE_KEY_HEADER)).toBeFalse();
+    expect(
+      request.request.headers.has(JEAP_JWE_RESPONSE_KEY_HEADER)
+    ).toBeFalse();
 
     return request;
   }
 
   expectNoRequest(method: string, path: string): void {
-    this.httpMock.expectNone(request =>
-      request.method === method && this.matchesPath(request.urlWithParams, path)
+    this.httpMock.expectNone(
+      request =>
+        request.method === method &&
+        this.matchesPath(request.urlWithParams, path)
     );
   }
 
@@ -141,9 +145,7 @@ export class JeapJweTestBackend {
 
     const decrypted = await compactDecrypt(responseKey, privateKey);
 
-    expect(decrypted.plaintext.byteLength).toBe(
-      JEAP_JWE_RESPONSE_CEK_BYTES
-    );
+    expect(decrypted.plaintext.byteLength).toBe(JEAP_JWE_RESPONSE_CEK_BYTES);
 
     return decrypted.plaintext;
   }
@@ -218,7 +220,6 @@ export class JeapJweTestBackend {
     return new URL(url, globalThis.location.origin).pathname === expectedPath;
   }
 
-
   expectAndFlushBackendConfig(
     config: JeapJweBackendConfigResponse,
     configPath: string = JWE_TEST_CONFIG_PATH
@@ -229,8 +230,6 @@ export class JeapJweTestBackend {
 
     return request;
   }
-
-
 
   private async expectRequestAsync(
     method: string,

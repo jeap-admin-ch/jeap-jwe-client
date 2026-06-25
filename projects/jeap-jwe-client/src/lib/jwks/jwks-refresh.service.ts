@@ -6,13 +6,7 @@ import {
   OnDestroy,
   PLATFORM_ID,
 } from '@angular/core';
-import {
-  catchError,
-  EMPTY,
-  exhaustMap,
-  Subscription,
-  timer,
-} from 'rxjs';
+import { catchError, EMPTY, exhaustMap, Subscription, timer } from 'rxjs';
 
 import { JwksCache } from './jwks-cache';
 
@@ -91,9 +85,7 @@ export class JwksRefreshService implements OnDestroy {
       !Number.isInteger(refreshIntervalSeconds) ||
       refreshIntervalSeconds <= 0
     ) {
-      throw new Error(
-        'JWE refreshIntervalSeconds must be a positive integer.'
-      );
+      throw new Error('JWE refreshIntervalSeconds must be a positive integer.');
     }
 
     return refreshIntervalSeconds * 1_000;

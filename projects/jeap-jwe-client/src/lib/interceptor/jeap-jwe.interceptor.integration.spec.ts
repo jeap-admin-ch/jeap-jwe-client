@@ -80,13 +80,13 @@ describe('jeapJweInterceptor integration', () => {
       name: 'Alice',
     };
 
-    traceJson('Angular application creates plain JSON request payload', requestBody);
+    traceJson(
+      'Angular application creates plain JSON request payload',
+      requestBody
+    );
 
     const responsePromise = firstValueFrom(
-      http.post<PersonResponse>(
-        JWE_TEST_PROTECTED_PERSONS_PATH,
-        requestBody
-      )
+      http.post<PersonResponse>(JWE_TEST_PROTECTED_PERSONS_PATH, requestBody)
     );
 
     traceMessage('Client loads backend JWE configuration first.');
@@ -108,16 +108,15 @@ describe('jeapJweInterceptor integration', () => {
 
     traceRequest('Encrypted request sent to backend', apiRequest);
     traceRequestBodyJweHeader('Request body JWE protected header', apiRequest);
-    traceResponseKeyJweHeader(
-      'JWE-Response-Key protected header',
-      apiRequest
-    );
+    traceResponseKeyJweHeader('JWE-Response-Key protected header', apiRequest);
 
     expect(apiRequest.request.headers.get('Accept')).toBe(JEAP_JWE_MEDIA_TYPE);
     expect(apiRequest.request.headers.get('Content-Type')).toBe(
       JEAP_JWE_MEDIA_TYPE
     );
-    expect(apiRequest.request.headers.has(JEAP_JWE_RESPONSE_KEY_HEADER)).toBeTrue();
+    expect(
+      apiRequest.request.headers.has(JEAP_JWE_RESPONSE_KEY_HEADER)
+    ).toBeTrue();
 
     const requestBodyHeader =
       backend.decodeRequestBodyProtectedHeader(apiRequest);
@@ -148,7 +147,10 @@ describe('jeapJweInterceptor integration', () => {
       name: 'Alice',
     };
 
-    traceJson('Mock backend prepares plain JSON response payload', backendResponse);
+    traceJson(
+      'Mock backend prepares plain JSON response payload',
+      backendResponse
+    );
 
     await backend.flushEncryptedJsonResponse(
       apiRequest,
@@ -197,15 +199,14 @@ describe('jeapJweInterceptor integration', () => {
     );
 
     traceRequest('Protected GET request sent to backend', apiRequest);
-    traceResponseKeyJweHeader(
-      'JWE-Response-Key protected header',
-      apiRequest
-    );
+    traceResponseKeyJweHeader('JWE-Response-Key protected header', apiRequest);
 
     expect(apiRequest.request.body).toBeNull();
     expect(apiRequest.request.headers.get('Accept')).toBe(JEAP_JWE_MEDIA_TYPE);
     expect(apiRequest.request.headers.has('Content-Type')).toBeFalse();
-    expect(apiRequest.request.headers.has(JEAP_JWE_RESPONSE_KEY_HEADER)).toBeTrue();
+    expect(
+      apiRequest.request.headers.has(JEAP_JWE_RESPONSE_KEY_HEADER)
+    ).toBeTrue();
 
     const responseKeyHeader =
       backend.decodeResponseKeyProtectedHeader(apiRequest);
@@ -267,7 +268,9 @@ describe('jeapJweInterceptor integration', () => {
     traceRequest('Plain request forwarded without JWE protection', request);
 
     expect(request.request.headers.get('Accept')).not.toBe(JEAP_JWE_MEDIA_TYPE);
-    expect(request.request.headers.has(JEAP_JWE_RESPONSE_KEY_HEADER)).toBeFalse();
+    expect(
+      request.request.headers.has(JEAP_JWE_RESPONSE_KEY_HEADER)
+    ).toBeFalse();
 
     request.flush({
       status: 'UP',
@@ -305,10 +308,7 @@ describe('jeapJweInterceptor integration', () => {
     };
 
     const responsePromise = firstValueFrom(
-      http.post<PersonResponse>(
-        JWE_TEST_PROTECTED_PERSONS_PATH,
-        requestBody
-      )
+      http.post<PersonResponse>(JWE_TEST_PROTECTED_PERSONS_PATH, requestBody)
     );
 
     expectAndFlushBackendConfig(backend);
@@ -379,7 +379,10 @@ describe('jeapJweInterceptor integration', () => {
       newKeyPair.privateKey
     );
 
-    traceJson('Mock backend decrypts retried request payload', decryptedRetryBody);
+    traceJson(
+      'Mock backend decrypts retried request payload',
+      decryptedRetryBody
+    );
 
     expect(decryptedRetryBody).toEqual(requestBody);
 
@@ -411,7 +414,10 @@ describe('jeapJweInterceptor integration', () => {
 
     const response = await responsePromise;
 
-    traceJson('Angular application receives decrypted retry response', response);
+    traceJson(
+      'Angular application receives decrypted retry response',
+      response
+    );
 
     expect(response).toEqual({
       id: 123,
@@ -491,12 +497,9 @@ describe('jeapJweInterceptor integration', () => {
 
     traceJson('Angular application receives typed error', {
       name: actualError instanceof Error ? actualError.name : undefined,
-      code:
-        actualError instanceof JeapJweError ? actualError.code : undefined,
+      code: actualError instanceof JeapJweError ? actualError.code : undefined,
       retryable:
-        actualError instanceof JeapJweError
-          ? actualError.retryable
-          : undefined,
+        actualError instanceof JeapJweError ? actualError.retryable : undefined,
     });
 
     expect(actualError instanceof JeapJweError).toBeTrue();
@@ -534,10 +537,7 @@ describe('jeapJweInterceptor integration', () => {
     );
 
     traceRequest('Protected GET request sent to backend', apiRequest);
-    traceResponseKeyJweHeader(
-      'JWE-Response-Key protected header',
-      apiRequest
-    );
+    traceResponseKeyJweHeader('JWE-Response-Key protected header', apiRequest);
 
     const wrongResponseCek = new Uint8Array(32);
     crypto.getRandomValues(wrongResponseCek);
@@ -567,8 +567,7 @@ describe('jeapJweInterceptor integration', () => {
 
     traceJson('Angular application receives typed error', {
       name: actualError instanceof Error ? actualError.name : undefined,
-      code:
-        actualError instanceof JeapJweError ? actualError.code : undefined,
+      code: actualError instanceof JeapJweError ? actualError.code : undefined,
       message: actualError instanceof Error ? actualError.message : undefined,
     });
 
@@ -640,10 +639,7 @@ function traceJson(label: string, value: unknown): void {
   console.info(`[JWE integration] ${label}:`, value);
 }
 
-function traceJwks(
-  label: string,
-  keys: readonly JeapJwePublicJwk[]
-): void {
+function traceJwks(label: string, keys: readonly JeapJwePublicJwk[]): void {
   traceJson(label, {
     keys: keys.map(key => ({
       kid: key.kid,
@@ -657,9 +653,7 @@ function traceJwks(
 }
 
 function traceRequest(label: string, request: TestRequest): void {
-  const responseKey = request.request.headers.get(
-    JEAP_JWE_RESPONSE_KEY_HEADER
-  );
+  const responseKey = request.request.headers.get(JEAP_JWE_RESPONSE_KEY_HEADER);
 
   traceJson(label, {
     method: request.request.method,
@@ -673,10 +667,7 @@ function traceRequest(label: string, request: TestRequest): void {
   });
 }
 
-function traceRequestBodyJweHeader(
-  label: string,
-  request: TestRequest
-): void {
+function traceRequestBodyJweHeader(label: string, request: TestRequest): void {
   const body = request.request.body;
 
   if (typeof body !== 'string') {
@@ -689,21 +680,13 @@ function traceRequestBodyJweHeader(
   traceCompactJweHeader(label, body);
 }
 
-function traceResponseKeyJweHeader(
-  label: string,
-  request: TestRequest
-): void {
-  const responseKey = request.request.headers.get(
-    JEAP_JWE_RESPONSE_KEY_HEADER
-  );
+function traceResponseKeyJweHeader(label: string, request: TestRequest): void {
+  const responseKey = request.request.headers.get(JEAP_JWE_RESPONSE_KEY_HEADER);
 
   traceCompactJweHeader(label, responseKey);
 }
 
-function traceCompactJweHeader(
-  label: string,
-  compactJwe: string | null
-): void {
+function traceCompactJweHeader(label: string, compactJwe: string | null): void {
   if (!compactJwe) {
     traceJson(label, null);
     return;

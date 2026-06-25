@@ -160,7 +160,7 @@ export interface JeapJweExcludeRule {
    * - /actuator/**
    * - /.well-known/**
    * - /api/{wildcard}/metadata
-  * - /**
+   * - /**
    */
   path: string;
 }

@@ -102,9 +102,7 @@ describe('JoseJweRequestEncryptor', () => {
       originalPayload
     );
 
-    const encrypted = await firstValueFrom(
-      encryptor.encrypt(request, match)
-    );
+    const encrypted = await firstValueFrom(encryptor.encrypt(request, match));
 
     expect(encrypted.request.method).toBe('POST');
     expect(encrypted.request.headers.get('Content-Type')).toBe(
@@ -179,9 +177,9 @@ describe('JoseJweRequestEncryptor', () => {
       Array.from(encrypted.context.responseContentEncryptionKey)
     );
 
-    expect(
-      encrypted.context.responseContentEncryptionKey.byteLength
-    ).toBe(JEAP_JWE_RESPONSE_CEK_BYTES);
+    expect(encrypted.context.responseContentEncryptionKey.byteLength).toBe(
+      JEAP_JWE_RESPONSE_CEK_BYTES
+    );
 
     expect(encrypted.context.originalRequestContentType).toBe(
       'application/json'
@@ -285,9 +283,9 @@ describe('JoseJweRequestEncryptor', () => {
       Array.from(encrypted.context.responseContentEncryptionKey)
     );
 
-    expect(
-      encrypted.context.responseContentEncryptionKey.byteLength
-    ).toBe(JEAP_JWE_RESPONSE_CEK_BYTES);
+    expect(encrypted.context.responseContentEncryptionKey.byteLength).toBe(
+      JEAP_JWE_RESPONSE_CEK_BYTES
+    );
 
     expect(encrypted.context.originalRequestContentType).toBeUndefined();
     expect(encrypted.context.originalResponseType).toBe('json');

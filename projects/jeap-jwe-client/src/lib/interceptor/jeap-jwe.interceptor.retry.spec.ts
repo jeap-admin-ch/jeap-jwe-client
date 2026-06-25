@@ -76,9 +76,7 @@ describe('jeapJweInterceptor retry handling', () => {
       'refresh',
     ]);
 
-    keySelector.refresh.and.returnValue(
-      of({} as JeapJwksSnapshot)
-    );
+    keySelector.refresh.and.returnValue(of({} as JeapJwksSnapshot));
 
     TestBed.configureTestingModule({
       providers: [

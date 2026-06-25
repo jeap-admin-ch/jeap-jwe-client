@@ -34,11 +34,7 @@ describe('JwksClient', () => {
 
   beforeEach(() => {
     TestBed.configureTestingModule({
-      providers: [
-        provideHttpClient(),
-        provideHttpClientTesting(),
-        JwksClient,
-      ],
+      providers: [provideHttpClient(), provideHttpClientTesting(), JwksClient],
     });
 
     jwksClient = TestBed.inject(JwksClient);
@@ -68,10 +64,7 @@ describe('JwksClient', () => {
     expect(request.request.headers.has('JWE-Response-Key')).toBeFalse();
 
     request.flush({
-      keys: [
-        publicRsaKey('transit-key:7'),
-        publicRsaKey('transit-key:6'),
-      ],
+      keys: [publicRsaKey('transit-key:7'), publicRsaKey('transit-key:6')],
     });
 
     expect(snapshot).toEqual(

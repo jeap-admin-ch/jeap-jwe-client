@@ -19,6 +19,29 @@ env:
   LIBRARY_DIST: dist/jeap-jwe-client
 
 jobs:
+  quality:
+    name: Lint and format
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v5
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v5
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Check formatting
+        run: npm run format:check
+
+      - name: Lint
+        run: npm run lint
+
   license:
     name: Update third-party licenses
     runs-on: ubuntu-latest

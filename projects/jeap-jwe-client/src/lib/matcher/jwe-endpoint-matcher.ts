@@ -71,7 +71,7 @@ export class JweEndpointMatcher {
   ): boolean {
     const excludeRules =
       config.useDefaultExcludes === false
-        ? config.exclude ?? []
+        ? (config.exclude ?? [])
         : [...JEAP_JWE_DEFAULT_EXCLUDE_RULES, ...(config.exclude ?? [])];
 
     return excludeRules.some(rule =>

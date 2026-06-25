@@ -85,9 +85,7 @@ describe('JeapJweClientConfigService', () => {
 
     expect(config.jwksUri).toBe('/custom-jwks.json');
     expect(config.refreshIntervalSeconds).toBe(300);
-    expect(config.exclude).toEqual([
-      { method: '*', path: '/local-public/**' },
-    ]);
+    expect(config.exclude).toEqual([{ method: '*', path: '/local-public/**' }]);
 
     httpMock.expectNone(`${sameOrigin}/.well-known/jwe-config`);
   });

@@ -92,9 +92,9 @@ export class JweKeySelector {
    * idempotent requests.
    */
   refresh(): Observable<JeapJwksSnapshot> {
-    return this.jwksCache.refresh().pipe(
-      tap(snapshot => this.startRefreshSchedule(snapshot))
-    );
+    return this.jwksCache
+      .refresh()
+      .pipe(tap(snapshot => this.startRefreshSchedule(snapshot)));
   }
 
   private refreshAndSelectByKid(kid: string): Observable<JeapJwePublicJwk> {
@@ -118,8 +118,6 @@ export class JweKeySelector {
   }
 
   private startRefreshSchedule(snapshot: JeapJwksSnapshot): void {
-    this.jwksRefreshService.ensureStarted(
-      snapshot.refreshIntervalSeconds
-    );
+    this.jwksRefreshService.ensureStarted(snapshot.refreshIntervalSeconds);
   }
 }

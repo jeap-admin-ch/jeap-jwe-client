@@ -126,9 +126,7 @@ describe('jeapJweInterceptor', () => {
            */
           loadBackendConfig: false,
 
-          exclude: [
-            { method: '*', path: '/api/protected/excluded/**' },
-          ],
+          exclude: [{ method: '*', path: '/api/protected/excluded/**' }],
         }),
 
         /**

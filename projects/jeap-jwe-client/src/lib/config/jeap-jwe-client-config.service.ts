@@ -12,10 +12,7 @@ import {
   throwError,
 } from 'rxjs';
 
-import {
-  isSecureBackendUrl,
-  resolveBackendOrigin,
-} from './backend-url';
+import { isSecureBackendUrl, resolveBackendOrigin } from './backend-url';
 
 import {
   JeapJweBackendConfigResponse,
@@ -83,34 +80,34 @@ export class JeapJweClientConfigService {
           this.resolveConfigUrl()
         )
       ).pipe(
-          map(backendConfig => this.resolveConfig(backendConfig)),
-          tap(resolved => {
-            this.resolvedConfig = resolved;
-          }),
-          catchError(cause =>
-            throwError(() =>
-              cause instanceof JeapJweError
-                ? cause
-                : new JeapJweError(
-                    'JWE_CONFIG_LOAD_FAILED',
-                    'Failed to load the JWE backend configuration.',
-                    true,
-                    cause
-                  )
-            )
-          ),
-          /**
-           * Clearing the in-flight stream on both success and error means a
-           * failed load is not retained, so the next getConfig() retries.
-           */
-          finalize(() => {
-            this.inFlightConfig$ = undefined;
-          }),
-          shareReplay({
-            bufferSize: 1,
-            refCount: true,
-          })
-        );
+        map(backendConfig => this.resolveConfig(backendConfig)),
+        tap(resolved => {
+          this.resolvedConfig = resolved;
+        }),
+        catchError(cause =>
+          throwError(() =>
+            cause instanceof JeapJweError
+              ? cause
+              : new JeapJweError(
+                  'JWE_CONFIG_LOAD_FAILED',
+                  'Failed to load the JWE backend configuration.',
+                  true,
+                  cause
+                )
+          )
+        ),
+        /**
+         * Clearing the in-flight stream on both success and error means a
+         * failed load is not retained, so the next getConfig() retries.
+         */
+        finalize(() => {
+          this.inFlightConfig$ = undefined;
+        }),
+        shareReplay({
+          bufferSize: 1,
+          refCount: true,
+        })
+      );
     }
 
     return this.inFlightConfig$;
@@ -129,10 +126,9 @@ export class JeapJweClientConfigService {
       exclude: this.localConfig.exclude ?? [],
       responseKeyHeader:
         backendConfig?.responseKeyHeader ?? JEAP_JWE_RESPONSE_KEY_HEADER,
-      contentTypeAllowlist:
-        backendConfig?.contentTypeAllowlist ?? [
-          ...DEFAULT_CONTENT_TYPE_ALLOWLIST,
-        ],
+      contentTypeAllowlist: backendConfig?.contentTypeAllowlist ?? [
+        ...DEFAULT_CONTENT_TYPE_ALLOWLIST,
+      ],
     };
   }
 

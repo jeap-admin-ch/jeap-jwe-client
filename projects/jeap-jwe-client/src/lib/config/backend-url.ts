@@ -4,12 +4,7 @@
  * pointing key/config retrieval at another host or at plaintext HTTP.
  */
 
-const LOCALHOST_HOSTNAMES = new Set([
-  'localhost',
-  '127.0.0.1',
-  '::1',
-  '[::1]',
-]);
+const LOCALHOST_HOSTNAMES = new Set(['localhost', '127.0.0.1', '::1', '[::1]']);
 
 export function isLocalhostHostname(hostname: string): boolean {
   return LOCALHOST_HOSTNAMES.has(hostname.toLowerCase());
