@@ -2,10 +2,7 @@ import { HttpHeaders, HttpResponse } from '@angular/common/http';
 import { CompactEncrypt } from 'jose';
 import { firstValueFrom } from 'rxjs';
 
-import {
-  JeapJweEndpointMatch,
-  JeapJweResolvedClientConfig,
-} from '../config/jeap-jwe-client-config';
+import { JeapJweEndpointMatch } from '../config/jeap-jwe-client-config';
 import { JeapJweError } from '../error/jeap-jwe-error';
 import {
   JEAP_JWE_CONTENT_ENCRYPTION,
@@ -18,20 +15,15 @@ import { JeapJweRequestContext } from './jwe-request-encryptor';
 describe('JoseJweResponseDecryptor', () => {
   const decryptor = new JoseJweResponseDecryptor();
 
-  const config: JeapJweResolvedClientConfig = {
-    origin: 'https://api.example.ch',
-    loadBackendConfig: false,
-    jwksUri: '/.well-known/jwks.json',
-    refreshIntervalSeconds: 300,
-    exclude: [],
-  };
-
   const match: JeapJweEndpointMatch = {
     method: 'GET',
     url: 'https://api.example.ch/api/persons/123',
     origin: 'https://api.example.ch',
     path: '/api/persons/123',
-    config,
+    protocol: {
+      responseKeyHeader: 'JWE-Response-Key',
+      contentTypeAllowlist: ['application/json'],
+    },
   };
 
   function createContext(
@@ -151,10 +143,7 @@ describe('JoseJweResponseDecryptor', () => {
     });
 
     const decryptedResponse = await firstValueFrom(
-      decryptor.decrypt(
-        encryptedResponse,
-        createContext(responseCek, 'text')
-      )
+      decryptor.decrypt(encryptedResponse, createContext(responseCek, 'text'))
     );
 
     expect(decryptedResponse.body).toBe('Service is available');
@@ -210,10 +199,7 @@ describe('JoseJweResponseDecryptor', () => {
     let actualError: unknown;
 
     await firstValueFrom(
-      decryptor.decrypt(
-        encryptedResponse,
-        createContext(wrongDecryptionCek)
-      )
+      decryptor.decrypt(encryptedResponse, createContext(wrongDecryptionCek))
     ).catch(error => {
       actualError = error;
     });
@@ -270,6 +256,68 @@ describe('JoseJweResponseDecryptor', () => {
 
     expect(actualError instanceof JeapJweError).toBeTrue();
   });
+
+  it('returns null for an empty encrypted JSON response body', async () => {
+    const responseCek = createResponseCek();
+
+    const compactJwe = await encryptResponse(
+      '',
+      responseCek,
+      'application/json'
+    );
+
+    const encryptedResponse = new HttpResponse({
+      status: 200,
+      body: compactJwe,
+      headers: new HttpHeaders({
+        'Content-Type': JEAP_JWE_MEDIA_TYPE,
+      }),
+    });
+
+    const decryptedResponse = await firstValueFrom(
+      decryptor.decrypt(encryptedResponse, createContext(responseCek, 'json'))
+    );
+
+    expect(decryptedResponse.body).toBeNull();
+  });
+
+  for (const responseType of ['arraybuffer', 'blob'] as const) {
+    it(`returns a typed error for a non-JSON ${responseType} response type`, async () => {
+      const responseCek = createResponseCek();
+
+      const compactJwe = await encryptResponse(
+        'binary-payload',
+        responseCek,
+        'application/octet-stream'
+      );
+
+      const encryptedResponse = new HttpResponse({
+        status: 200,
+        body: compactJwe,
+        headers: new HttpHeaders({
+          'Content-Type': JEAP_JWE_MEDIA_TYPE,
+        }),
+      });
+
+      let actualError: unknown;
+
+      await firstValueFrom(
+        decryptor.decrypt(
+          encryptedResponse,
+          createContext(responseCek, responseType)
+        )
+      ).catch(error => {
+        actualError = error;
+      });
+
+      expect(actualError).toEqual(
+        jasmine.objectContaining({
+          name: 'JeapJweError',
+          code: 'JWE_UNSUPPORTED_MEDIA_TYPE',
+        })
+      );
+    });
+  }
 
   it('returns a typed error when application/jose does not contain a compact JWE string', async () => {
     const responseCek = createResponseCek();

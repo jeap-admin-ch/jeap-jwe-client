@@ -1,12 +1,5 @@
 import { Injectable } from '@angular/core';
-import {
-  finalize,
-  Observable,
-  of,
-  shareReplay,
-  switchMap,
-  tap,
-} from 'rxjs';
+import { finalize, Observable, of, shareReplay, switchMap, tap } from 'rxjs';
 
 import { JeapJweClientConfigService } from '../config/jeap-jwe-client-config.service';
 import { JeapJwksSnapshot } from './jwk.model';

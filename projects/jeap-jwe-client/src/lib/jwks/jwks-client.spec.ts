@@ -18,7 +18,10 @@ describe('JwksClient', () => {
     loadBackendConfig: false,
     jwksUri: '/.well-known/jwks.json',
     refreshIntervalSeconds: 300,
+    include: [],
     exclude: [],
+    responseKeyHeader: 'JWE-Response-Key',
+    contentTypeAllowlist: ['application/json'],
   };
 
   function publicRsaKey(kid: string): object {
@@ -34,11 +37,7 @@ describe('JwksClient', () => {
 
   beforeEach(() => {
     TestBed.configureTestingModule({
-      providers: [
-        provideHttpClient(),
-        provideHttpClientTesting(),
-        JwksClient,
-      ],
+      providers: [provideHttpClient(), provideHttpClientTesting(), JwksClient],
     });
 
     jwksClient = TestBed.inject(JwksClient);
@@ -68,10 +67,7 @@ describe('JwksClient', () => {
     expect(request.request.headers.has('JWE-Response-Key')).toBeFalse();
 
     request.flush({
-      keys: [
-        publicRsaKey('transit-key:7'),
-        publicRsaKey('transit-key:6'),
-      ],
+      keys: [publicRsaKey('transit-key:7'), publicRsaKey('transit-key:6')],
     });
 
     expect(snapshot).toEqual(
@@ -191,6 +187,59 @@ describe('JwksClient', () => {
         code: 'JWE_KEY_RETRIEVAL_FAILED',
         retryable: true,
       })
+    );
+  });
+
+  function expectInvalidJwks(document: object): void {
+    let actualError: unknown;
+
+    jwksClient.fetch(config).subscribe({
+      error: error => {
+        actualError = error;
+      },
+    });
+
+    httpMock
+      .expectOne('https://api.example.ch/.well-known/jwks.json')
+      .flush(document);
+
+    expect(actualError).toEqual(
+      jasmine.objectContaining({
+        name: 'JeapJweError',
+        code: 'JWE_JWKS_INVALID',
+      })
+    );
+  }
+
+  it('returns a typed error when a key is not an encryption key', () => {
+    expectInvalidJwks({
+      keys: [{ ...publicRsaKey('transit-key:7'), use: 'sig' }],
+    });
+  });
+
+  it('returns a typed error when the JWKS contains no keys', () => {
+    expectInvalidJwks({ keys: [] });
+  });
+
+  it('returns a typed error when the JWKS has no keys array', () => {
+    expectInvalidJwks({});
+  });
+
+  it('returns a typed error when the JWKS contains duplicate key identifiers', () => {
+    expectInvalidJwks({
+      keys: [publicRsaKey('transit-key:7'), publicRsaKey('transit-key:7')],
+    });
+  });
+
+  it('rejects a JWKS URL that points to a different origin', () => {
+    expect(() =>
+      jwksClient.fetch({
+        ...config,
+        jwksUri: 'https://evil.example.com/jwks.json',
+      })
+    ).toThrowMatching(
+      error =>
+        error instanceof JeapJweError && error.code === 'JWE_JWKS_INVALID'
     );
   });
 });

@@ -1,19 +1,27 @@
+import { NgZone } from '@angular/core';
 import { fakeAsync, tick } from '@angular/core/testing';
 import { of, throwError } from 'rxjs';
 
+import { JeapJwksSnapshot } from './jwk.model';
 import { JwksCache } from './jwks-cache';
 import { JwksRefreshService } from './jwks-refresh.service';
 
 describe('JwksRefreshService', () => {
+  const snapshot = {} as JeapJwksSnapshot;
+
+  function createZone(): NgZone {
+    return new NgZone({ enableLongStackTrace: false });
+  }
+
   it('refreshes the JWKS periodically after the configured interval', fakeAsync(() => {
-    const jwksCache = jasmine.createSpyObj<JwksCache>('JwksCache', [
-      'refresh',
-    ]);
+    const jwksCache = jasmine.createSpyObj<JwksCache>('JwksCache', ['refresh']);
+    jwksCache.refresh.and.returnValue(of(snapshot));
 
-    // @ts-ignore
-    jwksCache.refresh.and.returnValue(of(undefined));
-
-    const refreshService = new JwksRefreshService(jwksCache);
+    const refreshService = new JwksRefreshService(
+      jwksCache,
+      createZone(),
+      'browser'
+    );
 
     refreshService.ensureStarted(5);
 
@@ -33,17 +41,17 @@ describe('JwksRefreshService', () => {
   }));
 
   it('continues later refresh attempts after one refresh fails', fakeAsync(() => {
-    const jwksCache = jasmine.createSpyObj<JwksCache>('JwksCache', [
-      'refresh',
-    ]);
-
+    const jwksCache = jasmine.createSpyObj<JwksCache>('JwksCache', ['refresh']);
     jwksCache.refresh.and.returnValues(
       throwError(() => new Error('Temporary backend failure')),
-      // @ts-ignore
-      of(undefined)
+      of(snapshot)
     );
 
-    const refreshService = new JwksRefreshService(jwksCache);
+    const refreshService = new JwksRefreshService(
+      jwksCache,
+      createZone(),
+      'browser'
+    );
 
     refreshService.ensureStarted(5);
 
@@ -57,5 +65,20 @@ describe('JwksRefreshService', () => {
     expect(jwksCache.refresh).toHaveBeenCalledTimes(2);
 
     refreshService.ngOnDestroy();
+  }));
+
+  it('does not schedule refreshes outside the browser', fakeAsync(() => {
+    const jwksCache = jasmine.createSpyObj<JwksCache>('JwksCache', ['refresh']);
+
+    const refreshService = new JwksRefreshService(
+      jwksCache,
+      createZone(),
+      'server'
+    );
+
+    refreshService.ensureStarted(5);
+
+    tick(60_000);
+    expect(jwksCache.refresh).not.toHaveBeenCalled();
   }));
 });

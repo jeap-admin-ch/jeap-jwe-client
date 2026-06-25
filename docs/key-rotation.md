@@ -23,14 +23,14 @@ Recommended backend behavior:
 
 1. Publish a new public key as the first JWKS key.
 2. Keep previous keys available for a transition period.
-3. Reject requests encrypted with keys that are no longer accepted for new requests by returning `JWE_UNKNOWN_KID`.
+3. Reject requests encrypted with keys that are no longer accepted for new requests by returning `JWE_UNKNOWN_KEY_ID`.
 
 ## Client refresh
 
 The client refreshes JWKS:
 
-- periodically, based on `refreshIntervalSeconds`,
-- on demand when the backend returns `JWE_UNKNOWN_KID`.
+- periodically, based on a client-side refresh interval (default 300 seconds),
+- on demand when the backend returns `JWE_UNKNOWN_KEY_ID`.
 
 ## Retry behavior
 
@@ -39,7 +39,7 @@ When the backend returns:
 ```json
 {
   "status": 400,
-  "code": "JWE_UNKNOWN_KID"
+  "code": "JWE_UNKNOWN_KEY_ID"
 }
 ```
 
@@ -52,7 +52,7 @@ The client:
 5. Creates a new `JWE-Response-Key`.
 6. Retries the original request once.
 
-If the retry fails again with `JWE_UNKNOWN_KID`, the typed error is returned to the application. No third request is sent.
+If the retry fails again with `JWE_UNKNOWN_KEY_ID`, the typed error is returned to the application. No third request is sent.
 
 ## Why one backend retry code is enough
 
@@ -66,5 +66,5 @@ The client action is identical for these backend situations:
 For all these cases, the client should refresh JWKS and retry once. Therefore the backend can use one code:
 
 ```text
-JWE_UNKNOWN_KID
+JWE_UNKNOWN_KEY_ID
 ```

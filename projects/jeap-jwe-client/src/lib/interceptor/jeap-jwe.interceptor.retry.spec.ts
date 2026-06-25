@@ -3,6 +3,8 @@ import {
   HttpErrorResponse,
   HttpHeaders,
   HttpResponse,
+  provideHttpClient,
+  withInterceptors,
 } from '@angular/common/http';
 import {
   HttpTestingController,
@@ -22,6 +24,7 @@ import { JeapJweError } from '../error/jeap-jwe-error';
 import { JeapJwksSnapshot } from '../jwks/jwk.model';
 import { JweKeySelector } from '../jwks/jwe-key-selector';
 import { provideJeapJweClient } from '../provider/provide-jeap-jwe-client';
+import { jeapJweInterceptor } from './jeap-jwe.interceptor';
 
 class FakeJweRequestEncryptor extends JweRequestEncryptor {
   calls = 0;
@@ -76,9 +79,7 @@ describe('jeapJweInterceptor retry handling', () => {
       'refresh',
     ]);
 
-    keySelector.refresh.and.returnValue(
-      of({} as JeapJwksSnapshot)
-    );
+    keySelector.refresh.and.returnValue(of({} as JeapJwksSnapshot));
 
     TestBed.configureTestingModule({
       providers: [
@@ -87,6 +88,7 @@ describe('jeapJweInterceptor retry handling', () => {
           origin: globalThis.location.origin,
           loadBackendConfig: false,
         }),
+        provideHttpClient(withInterceptors([jeapJweInterceptor])),
         provideHttpClientTesting(),
         {
           provide: JweRequestEncryptor,
@@ -112,7 +114,7 @@ describe('jeapJweInterceptor retry handling', () => {
     TestBed.resetTestingModule();
   });
 
-  it('refreshes JWKS and retries exactly once after JWE_UNKNOWN_KID', () => {
+  it('refreshes JWKS and retries exactly once after JWE_UNKNOWN_KEY_ID', () => {
     let actualResponse: unknown;
 
     http.get('/api/persons/123').subscribe(response => {
@@ -125,7 +127,7 @@ describe('jeapJweInterceptor retry handling', () => {
 
     firstRequest.flush(
       JSON.stringify({
-        code: 'JWE_UNKNOWN_KID',
+        code: 'JWE_UNKNOWN_KEY_ID',
       }),
       {
         status: 400,
@@ -197,7 +199,7 @@ describe('jeapJweInterceptor retry handling', () => {
 
     firstRequest.flush(
       JSON.stringify({
-        code: 'JWE_UNKNOWN_KID',
+        code: 'JWE_UNKNOWN_KEY_ID',
       }),
       {
         status: 400,
@@ -212,7 +214,7 @@ describe('jeapJweInterceptor retry handling', () => {
 
     retryRequest.flush(
       JSON.stringify({
-        code: 'JWE_UNKNOWN_KID',
+        code: 'JWE_UNKNOWN_KEY_ID',
       }),
       {
         status: 400,
@@ -226,7 +228,7 @@ describe('jeapJweInterceptor retry handling', () => {
     expect(actualError).toEqual(
       jasmine.objectContaining({
         name: 'JeapJweError',
-        code: 'JWE_UNKNOWN_KID',
+        code: 'JWE_UNKNOWN_KEY_ID',
         retryable: true,
       })
     );

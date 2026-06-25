@@ -10,11 +10,11 @@ For all configuration options, see [Configuration](./configuration.md).
 
 With `jeap-jwe-client` enabled:
 
-- requests to the configured backend origin are protected automatically
+- requests to the configured backend origin are protected when their path matches an include pattern and no exclude pattern
 - request bodies are encrypted when a body is present
 - every protected request sends a `JWE-Response-Key`
 - encrypted `application/jose` responses are decrypted automatically
-- excluded endpoints are forwarded unchanged
+- non-included and excluded endpoints are forwarded unchanged
 - requests to other backend origins are ignored
 
 Your Angular code still looks like normal `HttpClient` code.
@@ -30,12 +30,14 @@ The library handles the JWE transport internally.
 ## Installation
 
 ```bash
-npm install jeap-jwe-client jose
+npm install jeap-jwe-client
 ```
+
+`jose` is pulled in automatically as a bundled runtime dependency.
 
 ## Minimal setup
 
-Register the JWE client configuration and the functional Angular HTTP interceptor.
+Register the JWE client configuration and the functional Angular HTTP interceptor. The library does not call `provideHttpClient` itself: the consuming application owns its `HttpClient` setup and must register the `jeapJweInterceptor`, as shown below.
 
 ```ts
 import {ApplicationConfig} from '@angular/core';
@@ -58,7 +60,7 @@ export const appConfig: ApplicationConfig = {
 This is enough when the backend exposes the default discovery endpoints:
 
 ```text
-GET /.well-known/jwe-config
+GET /.well-known/jwe-configuration
 GET /.well-known/jwks.json
 ```
 
@@ -75,7 +77,7 @@ provideJeapJweClient({
 the client loads:
 
 ```text
-https://api.example.ch/.well-known/jwe-config
+https://api.example.ch/.well-known/jwe-configuration
 https://api.example.ch/.well-known/jwks.json
 ```
 
@@ -90,23 +92,22 @@ The backend must provide:
 By default, the Angular client first loads:
 
 ```text
-GET /.well-known/jwe-config
+GET /.well-known/jwe-configuration
 ```
 
-The backend configuration can tell the client where the JWKS is located and which endpoints should be excluded from JWE protection.
+The backend metadata tells the client where the JWKS is located, which protocol settings to use, and which paths are encrypted (the include/exclude path patterns).
 
-A typical backend configuration looks like this:
+A typical backend metadata response looks like this:
 
 ```json
 {
-  "jwksUri": "/.well-known/jwks.json",
-  "refreshIntervalSeconds": 300,
-  "exclude": [
-    {
-      "method": "*",
-      "path": "/actuator/**"
-    }
-  ]
+  "contentTypeAllowlist": ["application/json"],
+  "keyEncryptionAlgorithm": "RSA-OAEP-256",
+  "contentEncryptionMethod": "A256GCM",
+  "jwksPath": "/.well-known/jwks.json",
+  "responseKeyHeader": "JWE-Response-Key",
+  "includedPaths": ["/*api*/**"],
+  "excludedPaths": ["/actuator/**", "/.well-known/jwks.json", "/.well-known/jwe-configuration", "/ui-api/sse/events/**"]
 }
 ```
 
@@ -118,7 +119,7 @@ You can configure the client in two main ways.
 
 This is the default mode.
 
-The Angular application provides only the backend `origin`. The client then loads additional configuration from the backend.
+The Angular application provides only the backend `origin`. The client then loads additional protocol metadata from the backend.
 
 ```ts
 provideJeapJweClient({
@@ -126,7 +127,7 @@ provideJeapJweClient({
 });
 ```
 
-Use this mode when the backend should centrally publish JWE-related settings such as the JWKS URI and backend-owned exclude rules.
+Use this mode when the backend should centrally publish JWE protocol settings such as the JWKS path and the content-type allowlist.
 
 ### Frontend-only configuration
 
@@ -137,50 +138,45 @@ provideJeapJweClient({
   origin: 'https://api.example.ch',
   loadBackendConfig: false,
   jwksPath: '/.well-known/jwks.json',
-  exclude: [
-    {method: '*', path: '/public/**'},
-  ],
+  include: ['/*api*/**'],
+  exclude: ['/api/public/**'],
 });
 ```
 
-In this mode, the client does not call `/.well-known/jwe-config`. The Angular configuration defines the JWKS path and local exclude rules.
+In this mode, the client does not call `/.well-known/jwe-configuration`. The Angular configuration defines the JWKS path and the local include/exclude path patterns.
 
 The backend is still responsible for exposing the JWKS endpoint and for processing encrypted requests and responses.
 
-### Combined configuration
+### Adding include and exclude patterns
 
-You can also combine both approaches.
-
-The backend can provide shared excludes, and the frontend can add application-specific excludes. By default, local excludes and backend excludes are combined.
+When backend configuration loading is enabled, the backend publishes its `includedPaths`/`excludedPaths` and the client uses them as the source of truth. You can still add application-specific excludes through the `exclude` option (they are appended on top); the client default excludes apply only when the backend does not publish its own and are kept unless `useDefaultExcludes` is set to `false`.
 
 ```ts
 provideJeapJweClient({
   origin: 'https://api.example.ch',
-  exclude: [
-    {method: 'GET', path: '/local-public/**'},
-  ],
+  exclude: ['/api/local-public/**'],
 });
 ```
 
-For details, see [Exclude merge strategy](./configuration.md#exclude-merge-strategy).
+For details, see [Include patterns](./configuration.md#include-patterns) and [Exclude patterns](./configuration.md#exclude-patterns).
 
 ## What happens on the first protected request
 
 For a protected request to the configured backend origin, the client performs this flow:
 
-```text
-Angular HttpClient request
-  -> check whether the request matches the configured origin
-  -> check whether the request is excluded
-  -> load backend JWE configuration, if enabled
-  -> load JWKS
-  -> select an encryption key
-  -> create a request-local response CEK
-  -> encrypt the JWE-Response-Key
-  -> encrypt the request body, if present
-  -> send the protected HTTP request
-  -> decrypt the application/jose response
-  -> return the plain Angular response
+```mermaid
+flowchart TD
+  A[Angular HttpClient request] --> B[Check whether the request matches the configured origin]
+  B --> C[Check whether the path matches an include and no exclude]
+  C --> D[Load backend JWE configuration, if enabled]
+  D --> E[Load JWKS]
+  E --> F[Select an encryption key]
+  F --> G[Create a request-local response CEK]
+  G --> H[Encrypt the JWE-Response-Key]
+  H --> I[Encrypt the request body, if present]
+  I --> J[Send the protected HTTP request]
+  J --> K["Decrypt the application/jose response"]
+  K --> L[Return the plain Angular response]
 ```
 
 The application receives the same type it requested. The encrypted transport format is not exposed to application code.
@@ -262,9 +258,9 @@ Common fields are:
 | `kid` | Key identifier from the JWKS          |
 | `cty` | Content type of the encrypted payload |
 
-## Excluded endpoints
+## Non-protected endpoints
 
-Some endpoints are excluded by default:
+A request is protected only when its path matches an include pattern and no exclude pattern. By default the include pattern is `/*api*/**` (or whatever the backend publishes), so non-API paths are not protected. In addition, the client default excludes (used when the backend does not publish its own `excludedPaths`) are:
 
 ```text
 /.well-known/**
@@ -272,9 +268,9 @@ Some endpoints are excluded by default:
 /health
 ```
 
-Excluded requests are forwarded unchanged.
+Non-included and excluded requests are forwarded unchanged.
 
-For locally excluded endpoints:
+For these endpoints:
 
 - no backend JWE configuration is loaded
 - no JWKS is loaded
@@ -282,7 +278,7 @@ For locally excluded endpoints:
 - no `JWE-Response-Key` header is added
 - no request body encryption is performed
 
-This is important for bootstrapping endpoints such as `/.well-known/jwe-config` and `/.well-known/jwks.json`.
+Default excludes protect application discovery and health endpoints from encryption. They are not what prevents a bootstrap loop for the protocol endpoints: the configuration and JWKS requests always bypass the interceptor because the client issues them through Angular's `HttpBackend` directly, so there is never a recursive bootstrap loop regardless of excludes.
 
 ## Next steps
 
@@ -290,6 +286,5 @@ After the minimal setup works, see [Configuration](./configuration.md) for:
 
 - changing discovery paths
 - disabling backend configuration loading
-- adding exclude rules
-- changing exclude merge behavior
+- adding include and exclude patterns
 - understanding origin matching

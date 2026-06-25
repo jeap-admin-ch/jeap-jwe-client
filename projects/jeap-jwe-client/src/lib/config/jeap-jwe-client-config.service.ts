@@ -1,23 +1,41 @@
 import { HttpBackend, HttpClient } from '@angular/common/http';
 import { Inject, Injectable } from '@angular/core';
-import { catchError, map, Observable, of, shareReplay, throwError } from 'rxjs';
+import {
+  catchError,
+  defer,
+  finalize,
+  map,
+  Observable,
+  of,
+  shareReplay,
+  tap,
+  throwError,
+} from 'rxjs';
+
+import { isSecureBackendUrl, resolveBackendOrigin } from './backend-url';
 
 import {
   JeapJweBackendConfigResponse,
   JeapJweClientConfig,
   JeapJweResolvedClientConfig,
 } from './jeap-jwe-client-config';
+import {
+  DEFAULT_CONTENT_TYPE_ALLOWLIST,
+  DEFAULT_JWE_CONFIG_PATH,
+  DEFAULT_JWKS_PATH,
+  DEFAULT_REFRESH_INTERVAL_SECONDS,
+  resolveExcludedPaths,
+  resolveIncludedPaths,
+} from './jeap-jwe-defaults';
 import { JEAP_JWE_CLIENT_CONFIG } from './jeap-jwe-client.tokens';
+import { JEAP_JWE_RESPONSE_KEY_HEADER } from '../crypto/jwe-algorithms';
 import { JeapJweError } from '../error/jeap-jwe-error';
-
-const DEFAULT_JWE_CONFIG_PATH = '/.well-known/jwe-config';
-const DEFAULT_JWKS_PATH = '/.well-known/jwks.json';
-const DEFAULT_REFRESH_INTERVAL_SECONDS = 300;
 
 @Injectable()
 export class JeapJweClientConfigService {
   private readonly backendHttp: HttpClient;
-  private loadedConfig$?: Observable<JeapJweResolvedClientConfig>;
+  private resolvedConfig?: JeapJweResolvedClientConfig;
+  private inFlightConfig$?: Observable<JeapJweResolvedClientConfig>;
 
   constructor(
     @Inject(JEAP_JWE_CLIENT_CONFIG)
@@ -36,7 +54,7 @@ export class JeapJweClientConfigService {
    *
    * This is used as a cheap pre-match before the backend configuration
    * is loaded. It prevents excluded infrastructure endpoints such as
-   * /.well-known/jwe-config from triggering their own config loading.
+   * the JWE configuration endpoint from triggering their own config loading.
    */
   getLocalConfigSnapshot(): JeapJweResolvedClientConfig {
     return this.resolveConfig(undefined);
@@ -46,71 +64,91 @@ export class JeapJweClientConfigService {
    * Loads and caches the backend configuration.
    *
    * If loadBackendConfig is false, no HTTP call is made and the local
-   * configuration is returned with defaults.
+   * configuration is returned with defaults. A failed load is never cached:
+   * the next call retries.
    */
   getConfig(): Observable<JeapJweResolvedClientConfig> {
     if (this.localConfig.loadBackendConfig === false) {
       return of(this.getLocalConfigSnapshot());
     }
 
-    if (!this.loadedConfig$) {
-      const configUrl = this.resolveConfigUrl();
+    if (this.resolvedConfig) {
+      return of(this.resolvedConfig);
+    }
 
-      this.loadedConfig$ = this.backendHttp
-        .get<JeapJweBackendConfigResponse>(configUrl)
-        .pipe(
-          map(backendConfig => this.resolveConfig(backendConfig)),
-          catchError(cause => {
-            this.loadedConfig$ = undefined;
-
-            return throwError(
-              () =>
-                new JeapJweError(
+    if (!this.inFlightConfig$) {
+      this.inFlightConfig$ = defer(() =>
+        this.backendHttp.get<JeapJweBackendConfigResponse>(
+          this.resolveConfigUrl()
+        )
+      ).pipe(
+        map(backendConfig => this.resolveConfig(backendConfig)),
+        tap(resolved => {
+          this.resolvedConfig = resolved;
+        }),
+        catchError(cause =>
+          throwError(() =>
+            cause instanceof JeapJweError
+              ? cause
+              : new JeapJweError(
                   'JWE_CONFIG_LOAD_FAILED',
-                  `Failed to load JWE backend configuration from ${configUrl}.`,
+                  'Failed to load the JWE backend configuration.',
                   true,
                   cause
                 )
-            );
-          }),
-          shareReplay({
-            bufferSize: 1,
-            refCount: false,
-          })
-        );
+          )
+        ),
+        /**
+         * Clearing the in-flight stream on both success and error means a
+         * failed load is not retained, so the next getConfig() retries.
+         */
+        finalize(() => {
+          this.inFlightConfig$ = undefined;
+        }),
+        shareReplay({
+          bufferSize: 1,
+          refCount: true,
+        })
+      );
     }
 
-    return this.loadedConfig$;
+    return this.inFlightConfig$;
   }
 
   private resolveConfig(
     backendConfig: JeapJweBackendConfigResponse | undefined
   ): JeapJweResolvedClientConfig {
-    const localExcludeRules = this.localConfig.exclude ?? [];
-    const backendExcludeRules = backendConfig?.exclude ?? [];
-
-    const exclude =
-      this.localConfig.excludeMergeStrategy === 'override'
-        ? localExcludeRules
-        : [...backendExcludeRules, ...localExcludeRules];
-
     return {
       ...this.localConfig,
       jwksUri:
-        backendConfig?.jwksUri ??
+        backendConfig?.jwksPath ??
         this.localConfig.jwksPath ??
         DEFAULT_JWKS_PATH,
-      refreshIntervalSeconds:
-        backendConfig?.refreshIntervalSeconds ??
-        DEFAULT_REFRESH_INTERVAL_SECONDS,
-      exclude,
+      refreshIntervalSeconds: DEFAULT_REFRESH_INTERVAL_SECONDS,
+      include: resolveIncludedPaths(this.localConfig, backendConfig),
+      exclude: resolveExcludedPaths(this.localConfig, backendConfig),
+      responseKeyHeader:
+        backendConfig?.responseKeyHeader ?? JEAP_JWE_RESPONSE_KEY_HEADER,
+      contentTypeAllowlist: backendConfig?.contentTypeAllowlist ?? [
+        ...DEFAULT_CONTENT_TYPE_ALLOWLIST,
+      ],
     };
   }
 
   private resolveConfigUrl(): string {
-    return new URL(
+    const base = resolveBackendOrigin(this.localConfig.origin);
+    const configUrl = new URL(
       this.localConfig.jweConfigPath ?? DEFAULT_JWE_CONFIG_PATH,
-      this.localConfig.origin
-    ).toString();
+      base
+    );
+
+    if (configUrl.origin !== base.origin || !isSecureBackendUrl(configUrl)) {
+      throw new JeapJweError(
+        'JWE_CONFIG_LOAD_FAILED',
+        'The JWE configuration endpoint must be served over HTTPS on the configured backend origin.'
+      );
+    }
+
+    return configUrl.toString();
   }
 }

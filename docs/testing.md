@@ -11,13 +11,13 @@ The goal is to test both sides of the client behavior:
 
 | Area             | What to test                                                               |
 |------------------|----------------------------------------------------------------------------|
-| Interceptor      | Protected requests, excluded requests, response path, retry handling       |
-| Endpoint matcher | Origin matching, path matching, wildcard rules, method matching            |
+| Interceptor      | Protected requests, non-included/excluded requests, response path, retry handling |
+| Endpoint matcher | Origin matching, include/exclude decision, path patterns, wildcard rules    |
 | Config loader    | Backend config loading, local config, disabled backend config loading      |
 | JWKS             | Loading, validation, cache behavior, refresh, key selection                |
 | Crypto           | Request encryption, response decryption, wrong key, unsupported algorithms |
 | Response CEK     | Header exists, request-local key, `GET` without body                       |
-| Errors           | Unknown `kid`, malformed JWE, decryption failure                           |
+| Errors           | Unknown key id, malformed JWE, decryption failure                          |
 
 ## Integration tests
 
@@ -31,19 +31,19 @@ This gives the test realistic cryptographic coverage while keeping it fast and d
 
 The POST happy path should cover the full request and response lifecycle:
 
-```text
-Angular HttpClient
-  -> load /.well-known/jwe-config
-  -> load /.well-known/jwks.json
-  -> encrypt request body
-  -> set Accept: application/jose
-  -> set Content-Type: application/jose
-  -> set JWE-Response-Key
-  -> mocked backend decrypts request
-  -> mocked backend decrypts response CEK
-  -> mocked backend encrypts response
-  -> Angular client decrypts response
-  -> application receives plain JSON
+```mermaid
+flowchart TD
+  A[Angular HttpClient] --> B["Load /.well-known/jwe-configuration"]
+  B --> C["Load /.well-known/jwks.json"]
+  C --> D[Encrypt request body]
+  D --> E["Set Accept: application/jose"]
+  E --> F["Set Content-Type: application/jose"]
+  F --> G[Set JWE-Response-Key]
+  G --> H[Mocked backend decrypts request]
+  H --> I[Mocked backend decrypts response CEK]
+  I --> J[Mocked backend encrypts response]
+  J --> K[Angular client decrypts response]
+  K --> L[Application receives plain JSON]
 ```
 
 This test proves that application code can keep using plain Angular request and response types while the transport is protected.
@@ -88,29 +88,31 @@ Example excluded endpoint:
 /actuator/health
 ```
 
+Note that the configuration and JWKS requests are not relevant to exclude handling: the client issues them through Angular's `HttpBackend` directly, so they always bypass the interceptor and are never encrypted, regardless of excludes.
+
 ## Retry after unknown key
 
 The client should handle retryable key errors without creating an infinite retry loop.
 
 A typical test flow is:
 
-```text
-Client loads JWKS with old key
-  -> client sends protected request with old kid
-  -> backend returns JWE_UNKNOWN_KID
-  -> client refreshes JWKS
-  -> client retries the original request once with new kid
-  -> backend returns encrypted success response
-  -> application receives plain JSON
+```mermaid
+flowchart TD
+  A[Client loads JWKS with old key] --> B[Client sends protected request with old kid]
+  B --> C[Backend returns JWE_UNKNOWN_KEY_ID]
+  C --> D[Client refreshes JWKS]
+  D --> E[Client retries the original request once with new kid]
+  E --> F[Backend returns encrypted success response]
+  F --> G[Application receives plain JSON]
 ```
 
 The test should also verify the negative case:
 
-```text
-Client retries once
-  -> backend returns JWE_UNKNOWN_KID again
-  -> client returns a typed error
-  -> client does not retry again
+```mermaid
+flowchart TD
+  A[Client retries once] --> B[Backend returns JWE_UNKNOWN_KEY_ID again]
+  B --> C[Client returns a typed error]
+  C --> D[Client does not retry again]
 ```
 
 ## Wrong response CEK
@@ -121,10 +123,10 @@ A test should intentionally encrypt the response with the wrong CEK and verify t
 
 Expected behavior:
 
-```text
-Response decryption fails
-  -> client returns JeapJweError
-  -> error code is JWE_DECRYPTION_FAILED
+```mermaid
+flowchart TD
+  A[Response decryption fails] --> B[Client returns JeapJweError]
+  B --> C[Error code is JWE_DECRYPTION_FAILED]
 ```
 
 ## Test utilities
@@ -136,6 +138,7 @@ src/lib/testing/
   jwe-test-fixtures.ts
   jwe-test-keys.ts
   jwe-test-backend.ts
+  jwe-test-trace.ts
 ```
 
 ### `jwe-test-fixtures.ts`
@@ -175,8 +178,12 @@ Useful helpers include:
 - decrypting request bodies,
 - decrypting `JWE-Response-Key`,
 - flushing encrypted responses,
-- returning `JWE_UNKNOWN_KID`,
+- returning `JWE_UNKNOWN_KEY_ID`,
 - returning malformed or unsupported JWE responses.
+
+### `jwe-test-trace.ts`
+
+Provides the protocol-trace helper used by the integration spec to print a step-by-step, redacted view of the JWE flow. See [Protocol trace](#protocol-trace) for what it shows and what it must redact.
 
 ## Protocol trace
 

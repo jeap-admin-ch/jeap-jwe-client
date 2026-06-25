@@ -3,6 +3,10 @@ import { Injectable } from '@angular/core';
 import { catchError, map, Observable, throwError } from 'rxjs';
 
 import { JeapJweResolvedClientConfig } from '../config/jeap-jwe-client-config';
+import {
+  isSecureBackendUrl,
+  resolveBackendOrigin,
+} from '../config/backend-url';
 import { JeapJweError } from '../error/jeap-jwe-error';
 import { JeapJwePublicJwk, JeapJwksSnapshot } from './jwk.model';
 
@@ -29,9 +33,7 @@ export class JwksClient {
     this.backendHttp = new HttpClient(httpBackend);
   }
 
-  fetch(
-    config: JeapJweResolvedClientConfig
-  ): Observable<JeapJwksSnapshot> {
+  fetch(config: JeapJweResolvedClientConfig): Observable<JeapJwksSnapshot> {
     const jwksUrl = this.resolveJwksUrl(config);
 
     return this.backendHttp.get<unknown>(jwksUrl).pipe(
@@ -104,10 +106,7 @@ export class JwksClient {
     };
   }
 
-  private toPublicRsaJwk(
-    candidate: unknown,
-    index: number
-  ): JeapJwePublicJwk {
+  private toPublicRsaJwk(candidate: unknown, index: number): JeapJwePublicJwk {
     if (!this.isRecord(candidate)) {
       throw this.invalidKey(index);
     }
@@ -157,7 +156,24 @@ export class JwksClient {
   }
 
   private resolveJwksUrl(config: JeapJweResolvedClientConfig): string {
-    return new URL(config.jwksUri, config.origin).toString();
+    const base = resolveBackendOrigin(config.origin);
+    const jwksUrl = new URL(config.jwksUri, base);
+
+    if (jwksUrl.origin !== base.origin) {
+      throw new JeapJweError(
+        'JWE_JWKS_INVALID',
+        'The resolved JWKS URL must stay on the configured backend origin.'
+      );
+    }
+
+    if (!isSecureBackendUrl(jwksUrl)) {
+      throw new JeapJweError(
+        'JWE_JWKS_INVALID',
+        'The JWKS endpoint must be served over HTTPS.'
+      );
+    }
+
+    return jwksUrl.toString();
   }
 
   private invalidKey(index: number): JeapJweError {
