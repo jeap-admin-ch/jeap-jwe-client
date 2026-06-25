@@ -2,6 +2,7 @@ import { HttpBackend, HttpClient } from '@angular/common/http';
 import { Inject, Injectable } from '@angular/core';
 import {
   catchError,
+  defer,
   finalize,
   map,
   Observable,
@@ -10,6 +11,11 @@ import {
   tap,
   throwError,
 } from 'rxjs';
+
+import {
+  isSecureBackendUrl,
+  resolveBackendOrigin,
+} from './backend-url';
 
 import {
   JeapJweBackendConfigResponse,
@@ -72,24 +78,25 @@ export class JeapJweClientConfigService {
     }
 
     if (!this.inFlightConfig$) {
-      const configUrl = this.resolveConfigUrl();
-
-      this.inFlightConfig$ = this.backendHttp
-        .get<JeapJweBackendConfigResponse>(configUrl)
-        .pipe(
+      this.inFlightConfig$ = defer(() =>
+        this.backendHttp.get<JeapJweBackendConfigResponse>(
+          this.resolveConfigUrl()
+        )
+      ).pipe(
           map(backendConfig => this.resolveConfig(backendConfig)),
           tap(resolved => {
             this.resolvedConfig = resolved;
           }),
           catchError(cause =>
-            throwError(
-              () =>
-                new JeapJweError(
-                  'JWE_CONFIG_LOAD_FAILED',
-                  `Failed to load JWE backend configuration from ${configUrl}.`,
-                  true,
-                  cause
-                )
+            throwError(() =>
+              cause instanceof JeapJweError
+                ? cause
+                : new JeapJweError(
+                    'JWE_CONFIG_LOAD_FAILED',
+                    'Failed to load the JWE backend configuration.',
+                    true,
+                    cause
+                  )
             )
           ),
           /**
@@ -130,9 +137,19 @@ export class JeapJweClientConfigService {
   }
 
   private resolveConfigUrl(): string {
-    return new URL(
+    const base = resolveBackendOrigin(this.localConfig.origin);
+    const configUrl = new URL(
       this.localConfig.jweConfigPath ?? DEFAULT_JWE_CONFIG_PATH,
-      this.localConfig.origin
-    ).toString();
+      base
+    );
+
+    if (configUrl.origin !== base.origin || !isSecureBackendUrl(configUrl)) {
+      throw new JeapJweError(
+        'JWE_CONFIG_LOAD_FAILED',
+        'The JWE configuration endpoint must be served over HTTPS on the configured backend origin.'
+      );
+    }
+
+    return configUrl.toString();
   }
 }
