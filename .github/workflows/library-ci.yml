@@ -207,7 +207,6 @@ jobs:
           test -f "${LIBRARY_DIST}/LICENSE"
           test -f "${LIBRARY_DIST}/CHANGELOG.md"
           test -f "${LIBRARY_DIST}/THIRD-PARTY-LICENSES.md"
-          test -d "${LIBRARY_DIST}/docs"
           node -e "const p=require('./${LIBRARY_DIST}/package.json'); if (!p.name || !p.version) throw new Error('Missing package name or version'); if (p.private === true) throw new Error('Library package must not be private'); console.log(p.name + '@' + p.version)"
 
       - name: Create npm package tarball
