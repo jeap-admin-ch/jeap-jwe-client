@@ -4,16 +4,16 @@
 
 ## High-level flow
 
-```text
-Angular HttpClient
-  -> jeapJweInterceptor
-  -> Endpoint matcher
-  -> Config service
-  -> JWKS cache / key selector
-  -> Request encryptor
-  -> Backend
-  -> Response decryptor
-  -> Angular application
+```mermaid
+flowchart TD
+  A[Angular HttpClient] --> B[jeapJweInterceptor]
+  B --> C[Endpoint matcher]
+  C --> D[Config service]
+  D --> E[JWKS cache / key selector]
+  E --> F[Request encryptor]
+  F --> G[Backend]
+  G --> H[Response decryptor]
+  H --> I[Angular application]
 ```
 
 ## Components
@@ -22,23 +22,23 @@ Angular HttpClient
 
 The interceptor is the main entry point. It decides whether a request is protected, delegates encryption, forwards the request, and decrypts encrypted responses.
 
-It also handles the retry flow for the retryable backend error `JWE_UNKNOWN_KID`.
+It also handles the retry flow for the retryable backend error `JWE_UNKNOWN_KEY_ID`.
 
 ### Endpoint matcher
 
 The matcher checks:
 
 - whether the request targets the configured backend origin,
-- whether the path is excluded,
-- whether the HTTP method matches an exclude rule.
+- whether the path matches an include pattern,
+- whether the path matches an exclude pattern (excludes win).
 
-It ignores query parameters for path matching.
+A request is protected only when it matches an include and no exclude — the same decision the backend filter makes. Patterns are simple paths (no HTTP method) and matched against the request path relative to the origin root. Query parameters are ignored.
 
 ### Config service
 
-The config service combines local Angular configuration with optional backend configuration from `/.well-known/jwe-config`.
+The config service combines local Angular configuration with optional backend metadata from `/.well-known/jwe-configuration`. When the backend publishes `includedPaths`/`excludedPaths`, those are used as the source of truth for the include/exclude decision (the backend's `excludedPaths` already contains the jEAP defaults); the local `exclude` patterns are appended on top. When the backend does not publish them, the local `include` (or the default `/*api*/**`) and the local + default excludes apply.
 
-It caches the backend config load and avoids loading backend config for locally excluded endpoints.
+It caches the backend config load and avoids loading backend config for requests that are not protected locally (not included, or locally excluded).
 
 ### JWKS client
 
@@ -88,14 +88,14 @@ The response CEK must never be logged, persisted, cached globally, or exposed ou
 
 ## Retry flow
 
-```text
-protected request
-  -> backend returns 400 application/problem+json code=JWE_UNKNOWN_KID
-  -> client refreshes JWKS
-  -> client encrypts original request again
-  -> client creates a new response CEK
-  -> client retries once
-  -> second failure is returned to the application
+```mermaid
+flowchart TD
+  A[Protected request] --> B["Backend returns 400 application/problem+json, code=JWE_UNKNOWN_KEY_ID"]
+  B --> C[Client refreshes JWKS]
+  C --> D[Client encrypts original request again]
+  D --> E[Client creates a new response CEK]
+  E --> F[Client retries once]
+  F --> G[Second failure is returned to the application]
 ```
 
 There is no retry loop.

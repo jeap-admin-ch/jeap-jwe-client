@@ -17,7 +17,10 @@ describe('JwksCache', () => {
     loadBackendConfig: false,
     jwksUri: '/.well-known/jwks.json',
     refreshIntervalSeconds: 300,
+    include: [],
     exclude: [],
+    responseKeyHeader: 'JWE-Response-Key',
+    contentTypeAllowlist: ['application/json'],
   };
 
   function key(kid: string): JeapJwePublicJwk {

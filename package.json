@@ -7,6 +7,9 @@
     "build:lib": "ng build jeap-jwe-client",
     "test": "ng test jeap-jwe-client --watch=false",
     "test:watch": "ng test jeap-jwe-client",
+    "lint": "eslint \"projects/jeap-jwe-client/src/**/*.ts\"",
+    "format": "prettier --write \"projects/jeap-jwe-client/src/**/*.ts\"",
+    "format:check": "prettier --check \"projects/jeap-jwe-client/src/**/*.ts\"",
     "pack:lib": "cd dist/jeap-jwe-client && npm pack",
     "publish:lib:dry-run": "cd dist/jeap-jwe-client && npm publish --dry-run",
     "publish:lib": "cd dist/jeap-jwe-client && npm publish"
@@ -30,6 +33,7 @@
     "@angular/cli": "22.0.2",
     "@angular/compiler-cli": "22.0.2",
     "@types/jasmine": "~6.0.0",
+    "eslint": "^10.5.0",
     "jasmine-core": "~6.2.0",
     "karma": "~6.4.0",
     "karma-chrome-launcher": "~3.2.0",
@@ -37,6 +41,8 @@
     "karma-jasmine": "~5.1.0",
     "karma-jasmine-html-reporter": "~2.2.0",
     "ng-packagr": "^22.0.0",
-    "typescript": "~6.0.0"
+    "prettier": "^3.8.4",
+    "typescript": "~6.0.0",
+    "typescript-eslint": "^8.62.0"
   }
 }

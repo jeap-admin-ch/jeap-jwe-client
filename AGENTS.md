@@ -2,7 +2,7 @@
 
 Guidance for AI coding agents working **in this repository**. For how to *use* the library in a
 consuming Angular application, read [README.md](README.md) and the
-[projects/jeap-jwe-client/docs/](projects/jeap-jwe-client/docs/) folder instead.
+[docs/](docs/) folder instead.
 
 ## Project
 
@@ -16,6 +16,10 @@ The application continues to use ordinary Angular `HttpClient` calls and typed J
 library transforms protected requests into `application/jose` transport requests and decrypts
 encrypted backend responses back into normal Angular responses.
 
+The library does not call `provideHttpClient` itself. The consuming application owns its `HttpClient`
+setup and registers the `jeapJweInterceptor` via
+`provideHttpClient(withInterceptors([jeapJweInterceptor]))` alongside `provideJeapJweClient({...})`.
+
 ## Repository layout
 
 ```text
@@ -24,27 +28,27 @@ package-lock.json                                       # Workspace dependency l
 angular.json                                            # Angular workspace configuration
 tsconfig.json                                           # Workspace TypeScript configuration
 tsconfig.spec.json                                      # Test TypeScript configuration
-README.md                                              # Workspace-level project overview
+README.md                                              # Workspace-level project overview; jEAP docs-site landing page
 .github/workflows/                                     # CI and release workflows, if present
+
+docs/                                                  # Focused documentation files (repo root for jEAP docs pipeline + GitHub)
+  getting-started.md                                   # Consumer setup
+  development.md                                        # Local development: scripts, pre-commit checks, CI
+  configuration.md                                     # Client configuration reference
+  backend-contract.md                                  # Backend HTTP/JWE contract
+  architecture.md                                      # Internal architecture
+  key-rotation.md                                      # JWKS order, refresh and retry behavior
+  error-handling.md                                    # Client and backend error handling
+  testing.md                                           # Test strategy and protocol trace
+  security-considerations.md                           # Security and logging rules
+  publishing-and-versioning.md                         # Release, versioning and publishing process
 
 projects/
   jeap-jwe-client/                                     # The publishable Angular library project
     package.json                                       # Library package metadata and published version
     ng-package.json                                    # ng-packagr configuration for the library package
-    README.md                                          # Library package README, if packaged with the library
+    README.md                                          # Library (npm) package README; links to public docs
     CHANGELOG.md                                       # Library changelog
-    docs/                                              # Focused documentation files
-      README.md                                        # Documentation index
-      getting-started.md                               # Consumer setup
-      configuration.md                                 # Client configuration reference
-      backend-contract.md                              # Backend HTTP/JWE contract
-      architecture.md                                  # Internal architecture
-      key-rotation.md                                  # JWKS order, refresh and retry behavior
-      error-handling.md                                # Client and backend error handling
-      testing.md                                       # Test strategy and protocol trace
-      security-considerations.md                       # Security and logging rules
-      troubleshooting.md                               # Common problems and fixes
-      publishing-and-versioning.md                     # Release, versioning and publishing process
     src/
       public-api.ts                                    # Public API entry point
       lib/
@@ -53,7 +57,7 @@ projects/
         error/                                         # JeapJweError and backend error mapping
         interceptor/                                   # Functional Angular HTTP interceptor and integration tests
         jwks/                                          # JWKS client, cache, refresh service, key selector and models
-        matcher/                                       # Endpoint matching and exclude rule handling
+        matcher/                                       # Endpoint matching and include/exclude path handling
         provider/                                      # provideJeapJweClient provider setup
         testing/                                       # Test fixtures, test keys and mocked JWE backend helpers
 
@@ -65,11 +69,19 @@ dist/
 
 ```bash
 npm ci
+npm run format        # Prettier --write (or format:check to verify only)
+npm run lint
 npm run test
 npm run build:lib
 npm run pack:lib
 npm run publish:lib:dry-run
 ```
+
+**Before every commit, run `npm run format` and `npm run lint`.** CI (`.github/workflows/library-ci.yml`,
+"Lint and format" job) runs `npm run format:check` followed by `npm run lint` and fails the build on any
+Prettier or ESLint deviation, so an unformatted file blocks the whole pipeline. Running `npm run format`
+locally (it writes the fixes in place) avoids this. New or rewritten spec/source files are the usual
+culprits — format them before committing.
 
 Recommended workspace scripts:
 
@@ -81,6 +93,9 @@ Recommended workspace scripts:
     "build:lib": "ng build jeap-jwe-client",
     "test": "ng test jeap-jwe-client --watch=false --browsers=ChromeHeadless",
     "test:watch": "ng test jeap-jwe-client",
+    "lint": "eslint \"projects/jeap-jwe-client/src/**/*.ts\"",
+    "format": "prettier --write \"projects/jeap-jwe-client/src/**/*.ts\"",
+    "format:check": "prettier --check \"projects/jeap-jwe-client/src/**/*.ts\"",
     "pack:lib": "cd dist/jeap-jwe-client && npm pack",
     "publish:lib:dry-run": "cd dist/jeap-jwe-client && npm publish --dry-run",
     "publish:lib": "cd dist/jeap-jwe-client && npm publish"
@@ -88,8 +103,9 @@ Recommended workspace scripts:
 }
 ```
 
-The workspace uses Angular 22. Keep TypeScript, Angular CLI, Angular compiler, ng-packagr and Angular
-runtime packages aligned.
+The workspace uses Angular 22 and Node.js 24 (the CI/release workflows pin `NODE_VERSION` — keep them in
+sync with the Angular CLI's minimum). Keep TypeScript, Angular CLI, Angular compiler, ng-packagr and
+Angular runtime packages aligned.
 
 ## Angular library conventions
 
@@ -102,7 +118,9 @@ runtime packages aligned.
 - `tslib` is a runtime dependency.
 - Keep `sideEffects: false` unless a future change introduces top-level side effects.
 - Keep `jose` listed in `allowedNonPeerDependencies` in `ng-package.json`.
-- Package README, changelog and docs through `ng-package.json` assets.
+- Package the library README, changelog and third-party license notices through `ng-package.json`
+  assets. Documentation lives in the repository root `docs/` directory and is not bundled into the
+  npm package; the library README links to the public documentation instead.
 
 Recommended `ng-package.json` assets:
 
@@ -111,7 +129,7 @@ Recommended `ng-package.json` assets:
   "assets": [
     "README.md",
     "CHANGELOG.md",
-    "docs/**/*.md"
+    "THIRD-PARTY-LICENSES.md"
   ]
 }
 ```
@@ -119,21 +137,35 @@ Recommended `ng-package.json` assets:
 ## JWE protocol conventions
 
 The library protects requests to a single configured backend origin. Requests to other origins are
-ignored. Requests to the configured origin are protected unless they match an exclude rule.
+ignored. A request to the configured origin is protected only when its path matches an **include**
+pattern and no **exclude** pattern (includes evaluated first, excludes win) — the same decision the
+jEAP backend filter makes. Include/exclude patterns are simple paths (`PathPattern` syntax, no HTTP
+method).
 
-Default excluded paths:
+Default include pattern (used when the backend does not publish `includedPaths`):
+
+```ts
+['/*api*/**']
+```
+
+Client default excluded paths (used when the backend does not publish `excludedPaths`):
 
 ```ts
 [
-  { method: '*', path: '/.well-known/**' },
-  { method: '*', path: '/actuator/**' },
-  { method: '*', path: '/health' },
+  '/.well-known/**',
+  '/actuator/**',
+  '/health',
 ]
 ```
 
+When backend configuration loading is enabled, the backend publishes its effective
+`includedPaths`/`excludedPaths` (already containing the jEAP defaults, and prefixed with the backend
+context path when one is configured). Those take precedence; the client matches them relative to the
+origin root and only appends the local `exclude` patterns on top.
+
 Important protocol rules:
 
-- Backend config endpoint: `/.well-known/jwe-config`
+- Backend config endpoint: `/.well-known/jwe-configuration`
 - Default JWKS endpoint: `/.well-known/jwks.json`
 - Protected request media type: `application/jose`
 - Response key header: `JWE-Response-Key`
@@ -141,7 +173,7 @@ Important protocol rules:
 - Response key JWE: `alg: RSA-OAEP-256`, `enc: A256GCM`
 - Backend response JWE: `alg: dir`, `enc: A256GCM`
 - Response CEK length: 32 bytes
-- Backend retry error code: `JWE_UNKNOWN_KID`
+- Backend retry error code: `JWE_UNKNOWN_KEY_ID`
 
 The backend publishes public JWKS keys only. The client uses the first JWKS key, `keys[0]`, for new
 request encryption and must not reorder keys.
@@ -155,21 +187,25 @@ Key behavior:
 - `origin` is required.
 - `enabled` defaults to `true`.
 - `loadBackendConfig` defaults to `true`.
-- `jweConfigPath` defaults to `/.well-known/jwe-config`.
+- `jweConfigPath` defaults to `/.well-known/jwe-configuration`.
 - `jwksPath` defaults to `/.well-known/jwks.json`.
-- `excludeMergeStrategy` defaults to `extend`.
+- `include` defaults to `['/*api*/**']` when the backend publishes none.
 - `useDefaultExcludes` defaults to `true`.
 
-Exclude handling is blacklist-based:
+Include/exclude patterns are simple string paths aligned with the backend's
+`includedPaths`/`excludedPaths`. The backend publishes both lists; when present they are the source of
+truth. The client may add extra `exclude` patterns on top.
+
+Protection is include/exclude based:
 
 ```text
-Protected by default for the configured origin.
-Excluded only when a matching exclude rule exists.
-Other origins are untouched.
+Ignored for other origins.
+For the configured origin: protected only when the path matches an include and no exclude.
+Includes evaluated first, excludes win.
 ```
 
-When `loadBackendConfig` is enabled, the client must not load backend config for locally excluded
-endpoints.
+When `loadBackendConfig` is enabled, the client must not load backend config for requests that are not
+protected locally (not included, or locally excluded).
 
 ## Error handling conventions
 
@@ -187,12 +223,12 @@ Keep error messages safe. Do not include:
 The backend only needs one retryable client-recognized code:
 
 ```text
-JWE_UNKNOWN_KID
+JWE_UNKNOWN_KEY_ID
 ```
 
 This means the key identifier is unknown, stale, inactive, or no longer accepted by the backend.
 The client refreshes JWKS and retries the original request once. If the retry also fails with
-`JWE_UNKNOWN_KID`, the typed error is returned to the application. Do not introduce retry loops.
+`JWE_UNKNOWN_KEY_ID`, the typed error is returned to the application. Do not introduce retry loops.
 
 ## Security conventions
 
@@ -251,7 +287,7 @@ The trace must not show real plaintext, CEKs, private keys, or full compact JWE 
 ## Docs
 
 When changing public behavior, update the matching focused file under
-[projects/jeap-jwe-client/docs/](projects/jeap-jwe-client/docs/) and the documentation table in
+[docs/](docs/) and the documentation table in
 [README.md](README.md).
 
 Update docs when changing:
@@ -323,3 +359,5 @@ When editing this repository:
 - Do not add private JWK examples to docs or tests.
 - Do not silently change retry semantics.
 - Update tests and docs together with behavior changes.
+- Run `npm run format` and `npm run lint` before committing; CI fails on any Prettier or ESLint
+  deviation.

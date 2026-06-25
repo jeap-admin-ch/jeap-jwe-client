@@ -17,14 +17,14 @@ export const JEAP_JWE_RESPONSE_ALGORITHM = 'dir' as const;
 /**
  * HTTP media type used for compact JWE payloads.
  */
-export const JEAP_JWE_MEDIA_TYPE = 'application/jose';
+export const JEAP_JWE_MEDIA_TYPE = 'application/jose' as const;
 
 /**
  * HTTP header carrying the encrypted response CEK.
  */
-export const JEAP_JWE_RESPONSE_KEY_HEADER = 'JWE-Response-Key';
+export const JEAP_JWE_RESPONSE_KEY_HEADER = 'JWE-Response-Key' as const;
 
 /**
  * A256GCM uses a 256-bit content encryption key.
  */
-export const JEAP_JWE_RESPONSE_CEK_BYTES = 32;
+export const JEAP_JWE_RESPONSE_CEK_BYTES = 32 as const;

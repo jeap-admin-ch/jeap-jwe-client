@@ -1,5 +1,3 @@
-export type JeapJweExcludeMergeStrategy = 'extend' | 'override';
-
 export interface JeapJweClientConfig {
   /**
    * Global switch.
@@ -19,16 +17,16 @@ export interface JeapJweClientConfig {
 
   /**
    * Local JWKS path.
-   * Used as fallback when the backend config does not provide jwksUri.
+   * Used as fallback when the backend metadata does not provide a JWKS path.
    *
    * Defaults to "/.well-known/jwks.json".
    */
   jwksPath?: string;
 
   /**
-   * Backend JWE configuration path.
+   * Backend JWE configuration (metadata) path.
    *
-   * Defaults to "/.well-known/jwe-config".
+   * Defaults to "/.well-known/jwe-configuration".
    */
   jweConfigPath?: string;
 
@@ -40,52 +38,95 @@ export interface JeapJweClientConfig {
   loadBackendConfig?: boolean;
 
   /**
-   * Local exclude rules.
+   * Include path patterns (simple paths, no HTTP method - aligned with the
+   * backend's `includedPaths`).
    *
-   * Pure blacklist semantics:
-   * every request targeting the configured backend origin is protected
-   * unless it matches an exclude rule.
+   * A request to the configured origin is protected only when its path matches
+   * an include pattern and no exclude pattern (includes are evaluated first,
+   * excludes win). When backend configuration loading is enabled, the backend's
+   * published `includedPaths` take precedence over this list.
+   *
+   * Defaults to ["/*api*\/**"] when neither the backend nor this option provide
+   * include patterns.
    */
-  exclude?: JeapJweExcludeRule[];
+  include?: string[];
 
   /**
-   * Whether default exclude rules should be applied.
+   * Exclude path patterns owned by the client (simple paths, no HTTP method -
+   * aligned with the backend's `excludedPaths`).
    *
-   * Defaults to true.
+   * When backend configuration loading is enabled, the backend's published
+   * `excludedPaths` (which already contain the jEAP defaults) are used as the
+   * base and these client patterns are appended on top. Otherwise the client
+   * default excludes apply (unless disabled via `useDefaultExcludes`) and these
+   * patterns are added.
+   */
+  exclude?: string[];
+
+  /**
+   * Whether the client default exclude patterns should be applied.
+   *
+   * Only relevant when the backend does not publish its own `excludedPaths`
+   * (e.g. with `loadBackendConfig: false`). Defaults to true.
    */
   useDefaultExcludes?: boolean;
-
-  /**
-   * Controls how backend-provided exclude rules and local exclude rules are combined.
-   *
-   * extend:
-   *   backend exclude rules + local exclude rules
-   *
-   * override:
-   *   only local exclude rules
-   *
-   * Defaults to "extend".
-   */
-  excludeMergeStrategy?: JeapJweExcludeMergeStrategy;
 }
 
+/**
+ * Backend protocol metadata served at the JWE configuration endpoint.
+ *
+ * The field names follow the backend contract. The backend publishes the
+ * effective include/exclude path patterns; the JWKS refresh interval is a
+ * client-side default.
+ */
 export interface JeapJweBackendConfigResponse {
   /**
-   * JWKS URI returned by the backend.
+   * Content types the backend accepts as JWE payloads (the `cty` value).
+   */
+  contentTypeAllowlist?: string[];
+
+  /**
+   * Advertised key management algorithm (informational).
+   */
+  keyEncryptionAlgorithm?: string;
+
+  /**
+   * Advertised content encryption method (informational).
+   */
+  contentEncryptionMethod?: string;
+
+  /**
+   * Path of the JWKS endpoint serving the public keys.
    *
    * Example: "/.well-known/jwks.json"
    */
-  jwksUri?: string;
+  jwksPath?: string;
 
   /**
-   * Suggested JWKS refresh interval in seconds.
+   * Name of the header carrying the response-key envelope.
+   *
+   * Example: "JWE-Response-Key"
    */
-  refreshIntervalSeconds?: number;
+  responseKeyHeader?: string;
 
   /**
-   * Backend-provided exclude rules.
+   * Effective include path patterns the backend's filter applies to (simple
+   * paths, `PathPattern` syntax). Prefixed with the backend's context path when
+   * one is configured, so they are relative to the origin root.
+   *
+   * Example: ["/*api*\/**"]
    */
-  exclude?: JeapJweExcludeRule[];
+  includedPaths?: string[];
+
+  /**
+   * Effective exclude path patterns (simple paths, `PathPattern` syntax),
+   * already including the jEAP defaults (actuator, JWKS and protocol-metadata
+   * endpoints, SSE). Prefixed with the backend's context path when one is
+   * configured, so they are relative to the origin root.
+   *
+   * Example: ["/actuator/**", "/.well-known/jwks.json", "/.well-known/jwe-configuration"]
+   */
+  excludedPaths?: string[];
 }
 
 export interface JeapJweResolvedClientConfig extends JeapJweClientConfig {
@@ -100,38 +141,44 @@ export interface JeapJweResolvedClientConfig extends JeapJweClientConfig {
   refreshIntervalSeconds: number;
 
   /**
-   * Effective exclude rules after merging local and backend configuration.
+   * Effective include path patterns (defaults and backend metadata already
+   * merged in).
    */
-  exclude: JeapJweExcludeRule[];
+  include: string[];
+
+  /**
+   * Effective exclude path patterns (defaults, backend metadata and local
+   * patterns already merged in).
+   */
+  exclude: string[];
+
+  /**
+   * Effective header name carrying the response-key envelope.
+   */
+  responseKeyHeader: string;
+
+  /**
+   * Effective content types the backend accepts as JWE payloads.
+   */
+  contentTypeAllowlist: string[];
 }
 
-export interface JeapJweExcludeRule {
+/**
+ * Per-request protocol settings the encryption pipeline needs.
+ *
+ * Intentionally minimal: it carries only the values used while protecting a
+ * request, not the full resolved configuration.
+ */
+export interface JeapJweProtocolSettings {
   /**
-   * HTTP method.
-   *
-   * Examples:
-   * - GET
-   * - POST
-   * - PUT
-   * - PATCH
-   * - DELETE
-   * - *
-   *
-   * Undefined means "*".
+   * Header name carrying the encrypted response CEK.
    */
-  method?: string;
+  readonly responseKeyHeader: string;
 
   /**
-   * Path pattern.
-   *
-   * Supported examples:
-   * - /health
-   * - /actuator/**
-   * - /.well-known/**
-   * - /api/{wildcard}/metadata
-  * - /**
+   * Content types the backend accepts as JWE payloads (the `cty` value).
    */
-  path: string;
+  readonly contentTypeAllowlist: readonly string[];
 }
 
 export interface JeapJweEndpointMatch {
@@ -141,7 +188,7 @@ export interface JeapJweEndpointMatch {
   path: string;
 
   /**
-   * Effective client configuration used for this request.
+   * Protocol settings used while protecting this request.
    */
-  config: JeapJweResolvedClientConfig;
+  protocol: JeapJweProtocolSettings;
 }
