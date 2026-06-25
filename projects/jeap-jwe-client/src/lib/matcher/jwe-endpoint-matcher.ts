@@ -159,7 +159,25 @@ export class JweEndpointMatcher {
   }
 
   private currentOrigin(): string {
-    return globalThis.location?.origin ?? 'http://localhost';
+    const browserOrigin = globalThis.location?.origin;
+
+    if (browserOrigin) {
+      return browserOrigin;
+    }
+
+    /**
+     * Outside a browser (e.g. SSR) there is no document origin to resolve
+     * relative URLs against. Fall back to the configured absolute origin, and
+     * fail with a clear error rather than silently assuming localhost.
+     */
+    try {
+      return new URL(this.fallbackConfig.origin).origin;
+    } catch {
+      throw new Error(
+        'jeap-jwe-client: cannot resolve the request origin outside a browser. ' +
+          'Configure an absolute "origin".'
+      );
+    }
   }
 
   private toResolvedConfig(

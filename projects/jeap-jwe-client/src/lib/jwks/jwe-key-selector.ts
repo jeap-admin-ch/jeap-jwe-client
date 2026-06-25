@@ -1,12 +1,5 @@
 import { Injectable } from '@angular/core';
-import {
-  map,
-  Observable,
-  of,
-  switchMap,
-  tap,
-  throwError,
-} from 'rxjs';
+import { Observable, of, switchMap, tap, throwError } from 'rxjs';
 
 import { JeapJweError } from '../error/jeap-jwe-error';
 import { JeapJwePublicJwk, JeapJwksSnapshot } from './jwk.model';
@@ -29,7 +22,21 @@ export class JweKeySelector {
   selectCurrentKey(): Observable<JeapJwePublicJwk> {
     return this.jwksCache.getOrLoad().pipe(
       tap(snapshot => this.startRefreshSchedule(snapshot)),
-      map(snapshot => snapshot.keys[0])
+      switchMap(snapshot => {
+        const currentKey = snapshot.keys[0];
+
+        if (!currentKey) {
+          return throwError(
+            () =>
+              new JeapJweError(
+                'JWE_JWKS_INVALID',
+                'The backend JWKS snapshot does not contain an active key.'
+              )
+          );
+        }
+
+        return of(currentKey);
+      })
     );
   }
 
