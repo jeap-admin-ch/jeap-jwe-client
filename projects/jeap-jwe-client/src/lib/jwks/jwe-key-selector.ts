@@ -44,7 +44,7 @@ export class JweKeySelector {
       return throwError(
         () =>
           new JeapJweError(
-            'JWE_UNKNOWN_KID',
+            'JWE_UNKNOWN_KEY_ID',
             'Cannot select an empty JWE key identifier.'
           )
       );
@@ -102,7 +102,7 @@ export class JweKeySelector {
         return throwError(
           () =>
             new JeapJweError(
-              'JWE_UNKNOWN_KID',
+              'JWE_UNKNOWN_KEY_ID',
               'The requested JWE key identifier is not active in the backend JWKS.'
             )
         );
