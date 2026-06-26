@@ -110,8 +110,3 @@ npx ng build jeap-jwe-client
 - **`format:check` fails in CI but the code looks fine** — run `npm run format` locally and commit the
   result; Prettier and your editor may disagree on formatting.
 
-## Conventions
-
-Coding, commit, security and documentation conventions for agents and contributors working in this
-repository are documented in [AGENTS.md](../AGENTS.md). Note that external contributions cannot
-currently be accepted — see [CONTRIBUTING.md](../CONTRIBUTING.md).
