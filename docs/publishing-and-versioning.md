@@ -108,17 +108,23 @@ The package is published to the public npm registry as `@jeap/jeap-jwe-client`
 through GitHub Actions, using **npm Trusted Publishing (OIDC)** — no long-lived
 npm token is stored in CI in the steady state.
 
-A release is triggered by pushing a Git tag of the form `vX.Y.Z` on `main`:
+Releases are **driven by the library version** and run from the single
+`.github/workflows/build-and-release.yml` workflow. You do not create release tags by hand.
 
-1. Bump the version in `projects/jeap-jwe-client/package.json` and update
-   `publiccode.yml` (`softwareVersion`/`releaseDate`) to match.
-2. Add a matching `CHANGELOG.md` entry.
-3. Tag the release commit `vX.Y.Z` and push the tag.
-4. `.github/workflows/library-release.yml` verifies the tag is on `main` and
-   matches the package version, regenerates and diffs `THIRD-PARTY-LICENSES.md`,
-   runs the tests, builds the library, verifies the package contents, and
-   publishes `dist/jeap-jwe-client/` to npm with provenance.
+1. On a branch, bump the version in `projects/jeap-jwe-client/package.json`, update
+   `publiccode.yml` (`softwareVersion`/`releaseDate`) to match, and add a matching
+   `CHANGELOG.md` entry.
+2. Merge the version bump to `main` via pull request.
+3. On `main`, the workflow runs lint, license verification, the compatibility
+   matrix and packaging, then the **Release to npm** job. If the new version has no
+   matching `v<version>` tag yet, it diffs `THIRD-PARTY-LICENSES.md`, builds the
+   library, verifies the package contents, publishes `dist/jeap-jwe-client/` to npm
+   with provenance, and pushes a `vX.Y.Z` record tag (with the default
+   `GITHUB_TOKEN`). A merge that does not bump the version is a no-op.
 
-The one-time maintainer setup that makes publishing work (npm org, the first
-bootstrap release, and configuring the trusted publisher) is documented in
-[npm publishing setup](./npm-publishing-setup.md).
+In short: **merging a version bump to `main` releases that version.** The tag is a
+record/idempotency marker, not a trigger, so no PAT is involved.
+
+The one-time maintainer setup that makes publishing work (npm org, the `release`
+environment, the first bootstrap release, and configuring the trusted publisher) is
+documented in [npm publishing setup](./npm-publishing-setup.md).

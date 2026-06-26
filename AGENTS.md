@@ -30,7 +30,7 @@ tsconfig.json                                           # Workspace TypeScript c
 tsconfig.spec.json                                      # Test TypeScript configuration
 README.md                                              # Workspace-level project overview; jEAP docs-site landing page
 publiccode.yml                                          # publiccode.yml metadata (jEAP OSS distribution checklist)
-.github/workflows/                                     # CI and release workflows, if present
+.github/workflows/build-and-release.yml                       # Single workflow: CI checks + release/publish on main
 
 docs/                                                  # Focused documentation files (repo root for jEAP docs pipeline + GitHub)
   getting-started.md                                   # Consumer setup
@@ -79,7 +79,7 @@ npm run pack:lib
 npm run publish:lib:dry-run
 ```
 
-**Before every commit, run `npm run format` and `npm run lint`.** CI (`.github/workflows/library-ci.yml`,
+**Before every commit, run `npm run format` and `npm run lint`.** CI (`.github/workflows/build-and-release.yml`,
 "Lint and format" job) runs `npm run format:check` followed by `npm run lint` and fails the build on any
 Prettier or ESLint deviation, so an unformatted file blocks the whole pipeline. Running `npm run format`
 locally (it writes the fixes in place) avoids this. New or rewritten spec/source files are the usual
@@ -105,7 +105,7 @@ Recommended workspace scripts:
 }
 ```
 
-The workspace uses Angular 22 and Node.js 24 (the CI/release workflows pin `NODE_VERSION` — keep them in
+The workspace uses Angular 22 and Node.js 24 (the CI workflow pins `NODE_VERSION` — keep it in
 sync with the Angular CLI's minimum). Keep TypeScript, Angular CLI, Angular compiler, ng-packagr and
 Angular runtime packages aligned.
 
@@ -319,17 +319,19 @@ Keep one topic per documentation file.
   must be the release date.
 - All notable changes are documented in `projects/jeap-jwe-client/CHANGELOG.md`. Keep entries concise
   and grouped by version.
-- Release tags use the format `vX.Y.Z` (for example `v1.0.0`).
+- Release tags use the format `vX.Y.Z` (for example `v1.0.0`) and are created automatically by CI.
 - The root package version is not the library version.
 
 ## Releasing and publishing
 
-The package is published to the public npm registry as `@jeap/jeap-jwe-client` **by CI**, using npm
-trusted publishing (OIDC) — no long-lived npm token is stored in CI. Releases are triggered by
-pushing a `vX.Y.Z` tag on `main`; `.github/workflows/library-release.yml` then builds, verifies and
-publishes `dist/jeap-jwe-client/`. Do not publish manually from a developer machine in normal
-operation. The one-time npm org and trusted-publisher setup is documented in
-[docs/npm-publishing-setup.md](docs/npm-publishing-setup.md).
+The package is published to the public npm registry as `@jeap/jeap-jwe-client` **by CI**, from the
+single `build-and-release.yml` workflow, using npm trusted publishing (OIDC) — no long-lived npm token is
+stored in CI. **Releasing is driven by the library version:** when a new version lands on `main`, the
+`release` job (gated to `main`, in the `release` environment) publishes `dist/jeap-jwe-client/` and
+then pushes a `vX.Y.Z` record tag with the default `GITHUB_TOKEN`. The tag is a marker and
+idempotency guard, not a release trigger, so no PAT is needed; a merge without a version bump is a
+no-op. Do not publish manually in normal operation. The one-time npm org, `release` environment and
+trusted-publisher setup is documented in [docs/npm-publishing-setup.md](docs/npm-publishing-setup.md).
 
 Release checklist:
 
@@ -340,9 +342,8 @@ Release checklist:
 4. Update docs if needed
 5. Run npm ci && npm run test && npm run build:lib
 6. Verify dist/jeap-jwe-client contents (npm run publish:lib:dry-run)
-7. Merge to main
-8. Tag the release commit vX.Y.Z and push the tag
-9. CI publishes via trusted publishing
+7. Merge the version bump to main
+8. The release job publishes and pushes the vX.Y.Z tag
 ```
 
 ## Commit and branch conventions
