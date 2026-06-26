@@ -24,8 +24,7 @@ Angular application, start with [Getting started](./getting-started.md). For the
 ## Workspace layout
 
 This repository is an Angular workspace. The publishable library lives in `projects/jeap-jwe-client`;
-the workspace root `package.json` is private and only holds development tooling and scripts. For the
-full file-by-file layout see the *Repository layout* section in [AGENTS.md](../AGENTS.md).
+the workspace root `package.json` is private and only holds development tooling and scripts.
 
 | Path                                    | Purpose                                        |
 |-----------------------------------------|------------------------------------------------|
@@ -77,15 +76,16 @@ running `npm run format` before committing avoids it.
 
 `.github/workflows/library-ci.yml` runs on every push and pull request with the following jobs:
 
-| Job                          | What it checks                                                              |
-|------------------------------|----------------------------------------------------------------------------|
-| **Lint and format**          | `npm run format:check` then `npm run lint`                                  |
-| **Update third-party licenses** | Regenerates `THIRD-PARTY-LICENSES.md`; commits it on non-fork branches if outdated |
+| Job                                | What it checks                                                                                     |
+|------------------------------------|----------------------------------------------------------------------------------------------------|
+| **Lint and format**                | `npm run format:check` then `npm run lint`                                                         |
+| **Update third-party licenses**    | Regenerates `THIRD-PARTY-LICENSES.md`; commits it on non-fork branches if outdated                 |
 | **Angular 20/21/22 compatibility** | Installs the latest patch of each Angular major, then runs tests and builds the library against it |
-| **Package**                  | Runs tests, builds, verifies the dist contents and creates the npm tarball  |
+| **Package**                        | Runs tests, builds, verifies the dist contents, creates the npm tarball and runs a publish dry run |
 
-`.github/workflows/library-release.yml` runs on `jeap-jwe-client@*.*.*` tags and performs the publish
-flow (see [Publishing and versioning](./publishing-and-versioning.md)).
+`.github/workflows/library-release.yml` runs on `v*.*.*` tags and performs the publish flow via npm
+trusted publishing (see [Publishing and versioning](./publishing-and-versioning.md) and
+[npm publishing setup](./npm-publishing-setup.md)).
 
 ### Reproducing the compatibility matrix locally
 
@@ -109,4 +109,3 @@ npx ng build jeap-jwe-client
 - **Karma cannot find a browser** — install Chrome/Chromium and export `CHROME_BIN`.
 - **`format:check` fails in CI but the code looks fine** — run `npm run format` locally and commit the
   result; Prettier and your editor may disagree on formatting.
-

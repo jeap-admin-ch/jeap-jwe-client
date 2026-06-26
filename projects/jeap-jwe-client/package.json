@@ -1,6 +1,6 @@
 {
-  "name": "jeap-jwe-client",
-  "version": "0.2.0",
+  "name": "@jeap/jeap-jwe-client",
+  "version": "1.0.0",
   "description": "Angular client library for transparent JWE request and response protection with jEAP backends.",
   "keywords": [
     "angular",
@@ -10,11 +10,15 @@
     "http-interceptor",
     "jeap"
   ],
+  "author": "Federal Office of Information Technology, Systems and Telecommunication FOITT",
   "license": "Apache-2.0",
+  "publishConfig": {
+    "access": "public"
+  },
   "homepage": "https://github.com/jeap-admin-ch/jeap-jwe-client#readme",
   "repository": {
     "type": "git",
-    "url": "https://github.com/jeap-admin-ch/jeap-jwe-client.git"
+    "url": "git+https://github.com/jeap-admin-ch/jeap-jwe-client.git"
   },
   "bugs": {
     "url": "https://github.com/jeap-admin-ch/jeap-jwe-client/issues"

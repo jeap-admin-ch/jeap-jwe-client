@@ -36,6 +36,7 @@ guide, which is the source of truth for the contract this client implements.
 | Testing (unit tests, integration tests, protocol trace for reviews)                   | [docs/testing.md](docs/testing.md)                                     |
 | Security considerations (logging, CEKs, JWKs, plaintext, compact JWE values)          | [docs/security-considerations.md](docs/security-considerations.md)     |
 | Publishing and versioning (release flow, package metadata, changelog, docs assets)    | [docs/publishing-and-versioning.md](docs/publishing-and-versioning.md) |
+| npm publishing setup (npm org, trusted publishing, one-time bootstrap, CI secrets)    | [docs/npm-publishing-setup.md](docs/npm-publishing-setup.md)           |
 
 ## Usage
 
@@ -47,7 +48,7 @@ import {provideHttpClient, withInterceptors} from '@angular/common/http';
 import {
   jeapJweInterceptor,
   provideJeapJweClient,
-} from 'jeap-jwe-client';
+} from '@jeap/jeap-jwe-client';
 
 export const appConfig: ApplicationConfig = {
   providers: [
@@ -113,11 +114,11 @@ dist/jeap-jwe-client/
 
 ## Package
 
-The artifact consumers depend on is `jeap-jwe-client`.
+The artifact consumers depend on is `@jeap/jeap-jwe-client`.
 
-| Package           | Purpose                                                                                                                       |
-|-------------------|-------------------------------------------------------------------------------------------------------------------------------|
-| `jeap-jwe-client` | Angular library providing the JWE client configuration, interceptor, encryption, decryption, JWKS handling and retry behavior |
+| Package                  | Purpose                                                                                                                       |
+|--------------------------|-------------------------------------------------------------------------------------------------------------------------------|
+| `@jeap/jeap-jwe-client`  | Angular library providing the JWE client configuration, interceptor, encryption, decryption, JWKS handling and retry behavior |
 
 The package declares Angular and RxJS as peer dependencies. The consuming Angular application provides
 these dependencies. The `jose` package is a runtime dependency because the library uses it for JWE

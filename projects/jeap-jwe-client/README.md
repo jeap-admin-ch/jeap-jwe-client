@@ -1,4 +1,4 @@
-# jeap-jwe-client
+# @jeap/jeap-jwe-client
 
 Angular client library for transparent JWE request and response protection between Angular frontends and jEAP backend services.
 
@@ -19,7 +19,7 @@ The library protects requests to a configured backend origin, encrypts supported
 ## Installation
 
 ```bash
-npm install jeap-jwe-client
+npm install @jeap/jeap-jwe-client
 ```
 
 `jose` is pulled in automatically as a bundled runtime dependency.
@@ -34,7 +34,7 @@ import { provideHttpClient, withInterceptors } from '@angular/common/http';
 import {
   jeapJweInterceptor,
   provideJeapJweClient,
-} from 'jeap-jwe-client';
+} from '@jeap/jeap-jwe-client';
 
 export const appConfig: ApplicationConfig = {
   providers: [
@@ -57,7 +57,7 @@ The backend metadata may provide the JWKS path, the content-type allowlist, the 
 
 ## Documentation
 
-Full documentation for `jeap-jwe-client` is published with the jEAP documentation and on GitHub:
+Full documentation for `@jeap/jeap-jwe-client` is published with the jEAP documentation and on GitHub:
 
 - jEAP documentation site: [jeap-admin-ch.github.io](https://jeap-admin-ch.github.io/)
 - Source and docs on GitHub: [jeap-jwe-client/docs](https://github.com/jeap-admin-ch/jeap-jwe-client/tree/main/docs)

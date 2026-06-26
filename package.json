@@ -11,8 +11,8 @@
     "format": "prettier --write \"projects/jeap-jwe-client/src/**/*.ts\"",
     "format:check": "prettier --check \"projects/jeap-jwe-client/src/**/*.ts\"",
     "pack:lib": "cd dist/jeap-jwe-client && npm pack",
-    "publish:lib:dry-run": "cd dist/jeap-jwe-client && npm publish --dry-run",
-    "publish:lib": "cd dist/jeap-jwe-client && npm publish"
+    "publish:lib:dry-run": "cd dist/jeap-jwe-client && npm publish --dry-run --access public",
+    "publish:lib": "cd dist/jeap-jwe-client && npm publish --access public"
   },
   "private": true,
   "dependencies": {
