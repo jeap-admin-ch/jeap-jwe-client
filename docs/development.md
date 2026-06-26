@@ -80,7 +80,7 @@ with the following jobs:
 | Job                                | What it checks                                                                                     |
 |------------------------------------|----------------------------------------------------------------------------------------------------|
 | **Lint and format**                | `npm run format:check` then `npm run lint`                                                         |
-| **Update third-party licenses**    | On feature branches: regenerates and commits `THIRD-PARTY-LICENSES.md` if outdated. On `main`: verify-only — fails if outdated |
+| **Update third-party licenses**    | On feature branches: if `THIRD-PARTY-LICENSES.md` is outdated, regenerates, commits and pushes it, then **fails on purpose** so the build does not complete against stale licenses — re-run the workflow (or push again) to build the updated commit. On `main`: verify-only — fails if outdated |
 | **Angular 20/21/22 compatibility** | Installs the latest patch of each Angular major, then runs tests and builds the library against it |
 | **Package**                        | Runs tests, builds, verifies the dist contents, creates the npm tarball and runs a publish dry run |
 | **Release to npm**                 | On `main` only: if `projects/jeap-jwe-client/package.json` has no matching `v<version>` tag, builds, publishes to npm via trusted publishing (OIDC, in the `release` environment) and pushes a `vX.Y.Z` record tag. A merge without a version bump is a no-op |
