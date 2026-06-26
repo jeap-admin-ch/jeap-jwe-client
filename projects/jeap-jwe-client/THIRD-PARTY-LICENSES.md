@@ -18,7 +18,6 @@
 - [@angular-devkit/build-webpack@0.2200.2](https://github.com/angular/angular-cli) - MIT
 - [@angular-devkit/core@22.0.2](https://github.com/angular/angular-cli) - MIT
 - [@angular-devkit/schematics@22.0.2](https://github.com/angular/angular-cli) - MIT
-- [@angular/animations@22.0.2](https://github.com/angular/angular) - MIT
 - [@angular/build@22.0.2](https://github.com/angular/angular-cli) - MIT
 - [@angular/cli@22.0.2](https://github.com/angular/angular-cli) - MIT
 - [@angular/common@22.0.2](https://github.com/angular/angular) - MIT
