@@ -29,6 +29,7 @@ angular.json                                            # Angular workspace conf
 tsconfig.json                                           # Workspace TypeScript configuration
 tsconfig.spec.json                                      # Test TypeScript configuration
 README.md                                              # Workspace-level project overview; jEAP docs-site landing page
+publiccode.yml                                          # publiccode.yml metadata (jEAP OSS distribution checklist)
 .github/workflows/                                     # CI and release workflows, if present
 
 docs/                                                  # Focused documentation files (repo root for jEAP docs pipeline + GitHub)
@@ -42,6 +43,7 @@ docs/                                                  # Focused documentation f
   testing.md                                           # Test strategy and protocol trace
   security-considerations.md                           # Security and logging rules
   publishing-and-versioning.md                         # Release, versioning and publishing process
+  npm-publishing-setup.md                              # One-time npm org / trusted-publishing setup
 
 projects/
   jeap-jwe-client/                                     # The publishable Angular library project
@@ -97,8 +99,8 @@ Recommended workspace scripts:
     "format": "prettier --write \"projects/jeap-jwe-client/src/**/*.ts\"",
     "format:check": "prettier --check \"projects/jeap-jwe-client/src/**/*.ts\"",
     "pack:lib": "cd dist/jeap-jwe-client && npm pack",
-    "publish:lib:dry-run": "cd dist/jeap-jwe-client && npm publish --dry-run",
-    "publish:lib": "cd dist/jeap-jwe-client && npm publish"
+    "publish:lib:dry-run": "cd dist/jeap-jwe-client && npm publish --dry-run --access public",
+    "publish:lib": "cd dist/jeap-jwe-client && npm publish --access public"
   }
 }
 ```
@@ -110,6 +112,9 @@ Angular runtime packages aligned.
 ## Angular library conventions
 
 - The publishable package is `projects/jeap-jwe-client`.
+- The published npm package name is `@jeap/jeap-jwe-client` — public and scoped under the `@jeap`
+  org. The Angular workspace/project id stays `jeap-jwe-client` (used by `ng build jeap-jwe-client`,
+  `angular.json`, `dist/jeap-jwe-client/` and the CI env vars); do not confuse the two.
 - The library version is managed in `projects/jeap-jwe-client/package.json`.
 - The workspace root `package.json` is private and is not the published package.
 - Public exports must go through `projects/jeap-jwe-client/src/public-api.ts`.
@@ -307,28 +312,37 @@ Keep one topic per documentation file.
 
 ## Versioning
 
-- Use Semantic Versioning where possible.
-- During the `0.x` phase, breaking changes may still happen, but they must be documented explicitly.
+- The library follows [Semantic Versioning](https://semver.org/). It is past `1.0.0`, so breaking
+  changes require a **major** version bump and must be documented explicitly.
 - The library version is managed in `projects/jeap-jwe-client/package.json`.
-- All notable changes are documented in `projects/jeap-jwe-client/CHANGELOG.md`.
-- Keep changelog entries concise and grouped by version.
-- Before a release, update package version, changelog and affected documentation.
-- Use release tags in the format `jeap-jwe-client@x.y.z`.
+- Keep `publiccode.yml` in sync: `softwareVersion` must match the library version and `releaseDate`
+  must be the release date.
+- All notable changes are documented in `projects/jeap-jwe-client/CHANGELOG.md`. Keep entries concise
+  and grouped by version.
+- Release tags use the format `vX.Y.Z` (for example `v1.0.0`).
 - The root package version is not the library version.
 
-Recommended release checklist:
+## Releasing and publishing
+
+The package is published to the public npm registry as `@jeap/jeap-jwe-client` **by CI**, using npm
+trusted publishing (OIDC) — no long-lived npm token is stored in CI. Releases are triggered by
+pushing a `vX.Y.Z` tag on `main`; `.github/workflows/library-release.yml` then builds, verifies and
+publishes `dist/jeap-jwe-client/`. Do not publish manually from a developer machine in normal
+operation. The one-time npm org and trusted-publisher setup is documented in
+[docs/npm-publishing-setup.md](docs/npm-publishing-setup.md).
+
+Release checklist:
 
 ```text
-1. Update projects/jeap-jwe-client/package.json
+1. Update projects/jeap-jwe-client/package.json (version)
 2. Update projects/jeap-jwe-client/CHANGELOG.md
-3. Update docs if needed
-4. Run npm ci
-5. Run npm run test
-6. Run npm run build:lib
-7. Verify dist/jeap-jwe-client contents
-8. Run npm publish --dry-run from dist/jeap-jwe-client
-9. Tag release as jeap-jwe-client@x.y.z
-10. Publish from dist/jeap-jwe-client
+3. Update publiccode.yml (softwareVersion, releaseDate)
+4. Update docs if needed
+5. Run npm ci && npm run test && npm run build:lib
+6. Verify dist/jeap-jwe-client contents (npm run publish:lib:dry-run)
+7. Merge to main
+8. Tag the release commit vX.Y.Z and push the tag
+9. CI publishes via trusted publishing
 ```
 
 ## Commit and branch conventions

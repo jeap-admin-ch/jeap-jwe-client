@@ -30,7 +30,7 @@ The library handles the JWE transport internally.
 ## Installation
 
 ```bash
-npm install jeap-jwe-client
+npm install @jeap/jeap-jwe-client
 ```
 
 `jose` is pulled in automatically as a bundled runtime dependency.
@@ -45,7 +45,7 @@ import {provideHttpClient, withInterceptors} from '@angular/common/http';
 import {
   jeapJweInterceptor,
   provideJeapJweClient,
-} from 'jeap-jwe-client';
+} from '@jeap/jeap-jwe-client';
 
 export const appConfig: ApplicationConfig = {
   providers: [

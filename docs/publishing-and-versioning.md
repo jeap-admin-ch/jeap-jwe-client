@@ -28,8 +28,8 @@ Example:
 
 ```json
 {
-  "name": "jeap-jwe-client",
-  "version": "0.1.0"
+  "name": "@jeap/jeap-jwe-client",
+  "version": "1.0.0"
 }
 ```
 
@@ -60,7 +60,7 @@ A release tag should represent code, package metadata, changelog, and documentat
 Tag format:
 
 ```text
-jeap-jwe-client@0.1.0
+v1.0.0
 ```
 
 
@@ -101,3 +101,24 @@ license notices.
   ]
 }
 ```
+
+## Release flow
+
+The package is published to the public npm registry as `@jeap/jeap-jwe-client`
+through GitHub Actions, using **npm Trusted Publishing (OIDC)** — no long-lived
+npm token is stored in CI in the steady state.
+
+A release is triggered by pushing a Git tag of the form `vX.Y.Z` on `main`:
+
+1. Bump the version in `projects/jeap-jwe-client/package.json` and update
+   `publiccode.yml` (`softwareVersion`/`releaseDate`) to match.
+2. Add a matching `CHANGELOG.md` entry.
+3. Tag the release commit `vX.Y.Z` and push the tag.
+4. `.github/workflows/library-release.yml` verifies the tag is on `main` and
+   matches the package version, regenerates and diffs `THIRD-PARTY-LICENSES.md`,
+   runs the tests, builds the library, verifies the package contents, and
+   publishes `dist/jeap-jwe-client/` to npm with provenance.
+
+The one-time maintainer setup that makes publishing work (npm org, the first
+bootstrap release, and configuring the trusted publisher) is documented in
+[npm publishing setup](./npm-publishing-setup.md).

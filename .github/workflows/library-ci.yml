@@ -235,6 +235,10 @@ jobs:
         working-directory: ${{ env.LIBRARY_DIST }}
         run: npm pack
 
+      - name: Publish dry run
+        working-directory: ${{ env.LIBRARY_DIST }}
+        run: npm publish --dry-run --access public
+
       - name: Upload library dist artifact
         uses: actions/upload-artifact@v5
         with:
