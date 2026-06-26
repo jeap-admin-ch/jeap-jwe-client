@@ -152,7 +152,6 @@ jobs:
           echo "TypeScript version: ${{ matrix.typescript-version }}"
 
           npm install --no-save --package-lock=false \
-            @angular/animations@"${ANGULAR_VERSION}" \
             @angular/common@"${ANGULAR_VERSION}" \
             @angular/compiler@"${ANGULAR_VERSION}" \
             @angular/core@"${ANGULAR_VERSION}" \
@@ -170,7 +169,6 @@ jobs:
           node <<'NODE'
           const packageNames = [
             '@angular/core',
-            '@angular/animations',
             '@angular/common',
             '@angular/compiler',
             '@angular/compiler-cli',

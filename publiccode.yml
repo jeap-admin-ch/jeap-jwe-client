@@ -1,7 +1,7 @@
 publiccodeYmlVersion: 0.5.0
 name: jeap-jwe-client
 applicationSuite: jEAP
-softwareVersion: 1.0.0
+softwareVersion: 1.1.0
 releaseDate: 2026-06-26
 url: "https://github.com/jeap-admin-ch/jeap-jwe-client.git"
 landingURL: "https://github.com/jeap-admin-ch/jeap"
