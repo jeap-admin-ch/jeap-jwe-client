@@ -47,9 +47,6 @@ jobs:
     name: Update third-party licenses
     runs-on: ubuntu-latest
 
-    outputs:
-      updated: ${{ steps.update-license.outputs.updated }}
-
     steps:
       - name: Checkout repository
         uses: actions/checkout@v5
@@ -73,11 +70,9 @@ jobs:
             --out "${LIBRARY_ROOT}/THIRD-PARTY-LICENSES.md"
 
       - name: Update or verify THIRD-PARTY-LICENSES.md
-        id: update-license
         run: |
           if [ -z "$(git status --porcelain -- "${LIBRARY_ROOT}/THIRD-PARTY-LICENSES.md")" ]; then
             echo "THIRD-PARTY-LICENSES.md is already up to date."
-            echo "updated=false" >> "${GITHUB_OUTPUT}"
             exit 0
           fi
 
@@ -89,7 +84,10 @@ jobs:
             exit 1
           fi
 
-          # On feature branches, regenerate and push the updated file.
+          # On feature branches, regenerate and push the updated file, then fail on purpose.
+          # The push creates a new commit, so this run is building stale licenses: the
+          # downstream compatibility/package/release jobs must not continue. Failing here
+          # notifies the developer; re-running the workflow builds the corrected commit.
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
 
@@ -97,15 +95,16 @@ jobs:
           git commit -m "Update third-party licenses"
           git push
 
-          echo "THIRD-PARTY-LICENSES.md was updated and pushed."
-          echo "updated=true" >> "${GITHUB_OUTPUT}"
+          echo "THIRD-PARTY-LICENSES.md was out of date; regenerated it and pushed a new commit."
+          echo "Failing this run on purpose so the build is not completed against stale licenses."
+          echo "Re-run the workflow (or push again) to build the updated commit."
+          exit 1
 
   compatibility:
     name: Angular ${{ matrix.angular-major }} compatibility
     runs-on: ubuntu-latest
     needs:
       - license
-    if: needs.license.outputs.updated != 'true'
 
     strategy:
       fail-fast: false
@@ -196,7 +195,6 @@ jobs:
     needs:
       - license
       - compatibility
-    if: needs.license.outputs.updated != 'true'
 
     steps:
       - name: Checkout repository
