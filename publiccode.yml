@@ -1,0 +1,49 @@
+publiccodeYmlVersion: 0.5.0
+name: jeap-jwe-client
+applicationSuite: jEAP
+softwareVersion: 1.0.0
+releaseDate: 2026-06-26
+url: "https://github.com/jeap-admin-ch/jeap-jwe-client.git"
+landingURL: "https://github.com/jeap-admin-ch/jeap"
+platforms:
+  - web
+categories:
+  - application-development
+developmentStatus: stable
+softwareType: library
+organisation:
+  uri: https://ld.admin.ch/office/V.1.7
+  name: Federal Office of Information Technology, Systems and Telecommunication
+description:
+  en:
+    localisedName: jeap-jwe-client
+    shortDescription: Angular library for transparent JWE request and response protection with jEAP backends.
+    longDescription: >
+      jeap-jwe-client is an Angular library that transparently protects HTTP
+      communication between an Angular frontend and a jEAP backend service using
+      JSON Web Encryption (JWE). It plugs into Angular's functional HttpClient
+      interceptor mechanism, so application code keeps using ordinary HttpClient
+      requests and typed JSON responses while protected requests are transported
+      as application/jose. The library loads the backend JWE configuration and
+      JWKS, encrypts JSON request bodies as compact JWE, transports a
+      request-local response content encryption key, decrypts encrypted backend
+      responses, and refreshes keys and retries once on an unknown key id.
+    features:
+      - Transparent Angular HttpClient interceptor for JWE request and response protection
+      - Backend JWE configuration and JWKS loading, caching, refresh and key selection
+      - Request body encryption using RSA-OAEP-256 and A256GCM
+      - Request-local response content encryption key transport via the JWE-Response-Key header
+      - Response decryption for application/jose backend responses
+      - Retry on backend JWE_UNKNOWN_KEY_ID with JWKS refresh
+      - Typed client-side errors through JeapJweError
+legal:
+  license: Apache-2.0
+maintenance:
+  type: internal
+  contacts:
+    - name: Federal Office of Information Technology, Systems and Telecommunication FOITT
+      email: jeap-community@bit.admin.ch
+localisation:
+  localisationReady: false
+  availableLanguages:
+    - en

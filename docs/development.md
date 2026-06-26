@@ -6,7 +6,7 @@ Angular application, start with [Getting started](./getting-started.md). For the
 
 ## Prerequisites
 
-- **Node.js 24** (the CI and release workflows pin `NODE_VERSION`; Angular 22 requires Node `>= 24.15.0`,
+- **Node.js 24** (the CI workflow pins `NODE_VERSION`; Angular 22 requires Node `>= 24.15.0`,
   or `22.22.3`/`26.0.0`). Use a version manager such as `nvm` to match it:
 
   ```bash
@@ -74,18 +74,20 @@ running `npm run format` before committing avoids it.
 
 ## Continuous integration
 
-`.github/workflows/library-ci.yml` runs on every push and pull request with the following jobs:
+`.github/workflows/build-and-release.yml` runs on every branch push (tags excluded) and via manual dispatch,
+with the following jobs:
 
 | Job                                | What it checks                                                                                     |
 |------------------------------------|----------------------------------------------------------------------------------------------------|
 | **Lint and format**                | `npm run format:check` then `npm run lint`                                                         |
-| **Update third-party licenses**    | Regenerates `THIRD-PARTY-LICENSES.md`; commits it on non-fork branches if outdated                 |
+| **Update third-party licenses**    | On feature branches: regenerates and commits `THIRD-PARTY-LICENSES.md` if outdated. On `main`: verify-only — fails if outdated |
 | **Angular 20/21/22 compatibility** | Installs the latest patch of each Angular major, then runs tests and builds the library against it |
 | **Package**                        | Runs tests, builds, verifies the dist contents, creates the npm tarball and runs a publish dry run |
+| **Release to npm**                 | On `main` only: if `projects/jeap-jwe-client/package.json` has no matching `v<version>` tag, builds, publishes to npm via trusted publishing (OIDC, in the `release` environment) and pushes a `vX.Y.Z` record tag. A merge without a version bump is a no-op |
 
-`.github/workflows/library-release.yml` runs on `v*.*.*` tags and performs the publish flow via npm
-trusted publishing (see [Publishing and versioning](./publishing-and-versioning.md) and
-[npm publishing setup](./npm-publishing-setup.md)).
+Publishing is part of this single workflow — there is no separate release workflow. The publish flow
+and the one-time setup are described in [Publishing and versioning](./publishing-and-versioning.md)
+and [npm publishing setup](./npm-publishing-setup.md).
 
 ### Reproducing the compatibility matrix locally
 
