@@ -100,8 +100,9 @@ The backend still needs to provide the JWKS endpoint and support encrypted reque
 | Option               |                         Default | Description                                                                        |
 |----------------------|--------------------------------:|------------------------------------------------------------------------------------|
 | `enabled`            |                          `true` | Enables or disables JWE protection globally                                        |
-| `jweConfigPath`      | `/.well-known/jwe-configuration` | Backend JWE configuration endpoint                                                 |
-| `jwksPath`           |        `/.well-known/jwks.json` | JWKS endpoint used when backend config loading is disabled or does not override it |
+| `origin`             |   the frontend's own origin | Backend origin; configure only for cross-origin backends                           |
+| `jweConfigPath`      | `<base path>/.well-known/jwe-configuration` | Backend JWE configuration endpoint; the base path is derived from the Angular base href |
+| `jwksPath`           |        `<base path>/.well-known/jwks.json` | JWKS endpoint used when backend config loading is disabled or does not override it |
 | `loadBackendConfig`  |                          `true` | Loads JWE configuration from the backend                                           |
 | `include`            |                    `/*api*/**` | Include patterns used when the backend does not publish `includedPaths`            |
 | `useDefaultExcludes` |                          `true` | Adds default excludes for discovery and health endpoints                           |

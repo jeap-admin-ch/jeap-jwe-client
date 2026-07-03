@@ -39,20 +39,20 @@ import {
 
 export const appConfig: ApplicationConfig = {
   providers: [
-    provideJeapJweClient({
-      origin: 'https://api.example.ch',
-    }),
+    provideJeapJweClient(),
     provideHttpClient(withInterceptors([jeapJweInterceptor])),
   ],
 };
 ```
 
-With this configuration the client loads:
+Without options, the backend origin defaults to the frontend's own origin and the discovery paths default to the application base path (the Angular base href, which matches the backend's servlet context path when the frontend is served by its backend) plus the well-known paths. For a base href of `/myapp/`, the client loads:
 
 ```text
-GET https://api.example.ch/.well-known/jwe-configuration
-GET https://api.example.ch/.well-known/jwks.json
+GET /myapp/.well-known/jwe-configuration
+GET /myapp/.well-known/jwks.json
 ```
+
+For a cross-origin backend, configure `origin` (and `jweConfigPath` for a backend under a context path) explicitly.
 
 The backend metadata may provide the JWKS path, the content-type allowlist, the response-key header, and the include/exclude path patterns (`includedPaths`/`excludedPaths`) that decide which requests are protected.
 

@@ -49,24 +49,27 @@ import {
 
 export const appConfig: ApplicationConfig = {
   providers: [
-    provideJeapJweClient({
-      origin: 'https://api.example.ch',
-    }),
+    provideJeapJweClient(),
     provideHttpClient(withInterceptors([jeapJweInterceptor])),
   ],
 };
 ```
 
-This is enough when the backend exposes the default discovery endpoints:
+No options are needed for the standard jEAP SCS deployment where the frontend is served by its backend's web server:
+
+- `origin` defaults to the frontend's own origin,
+- `jweConfigPath` and `jwksPath` default to the application base path (the Angular base href) plus the well-known paths — and the base href matches the backend's servlet context path in that deployment, because the backend serves the frontend's `index.html` at the root of its context path.
+
+For a base href of `/myapp/`, the client loads:
 
 ```text
-GET /.well-known/jwe-configuration
-GET /.well-known/jwks.json
+GET /myapp/.well-known/jwe-configuration
+GET /myapp/.well-known/jwks.json
 ```
 
-Both URLs are resolved against the configured `origin`.
+and the backend-published, context-path-prefixed include/exclude patterns drive the protect/skip decision — a backend under a servlet context path is protected out of the box.
 
-> **Backend under a servlet context path:** when the backend runs under a context path (e.g. `/myapp`), point the discovery endpoint at it — nothing else is required. The backend publishes context-path-prefixed include/exclude patterns, and the client only makes include decisions once that configuration is loaded:
+> **Cross-origin backend:** when the backend is served from another origin, configure it explicitly (and the discovery path, when the backend runs under a context path):
 >
 > ```ts
 > provideJeapJweClient({
@@ -75,15 +78,7 @@ Both URLs are resolved against the configured `origin`.
 > });
 > ```
 
-For example, with this configuration:
-
-```ts
-provideJeapJweClient({
-  origin: 'https://api.example.ch',
-});
-```
-
-the client loads:
+For example, with `origin: 'https://api.example.ch'` and a root-served backend, the client loads:
 
 ```text
 https://api.example.ch/.well-known/jwe-configuration

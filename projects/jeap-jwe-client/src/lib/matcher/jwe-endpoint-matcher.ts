@@ -182,8 +182,8 @@ export class JweEndpointMatcher {
     return new URL(url, this.currentOrigin());
   }
 
-  private toOrigin(origin: string): string {
-    return new URL(origin, this.currentOrigin()).origin;
+  private toOrigin(origin: string | undefined): string {
+    return new URL(origin ?? '', this.currentOrigin()).origin;
   }
 
   private currentOrigin(): string {
@@ -199,7 +199,7 @@ export class JweEndpointMatcher {
      * fail with a clear error rather than silently assuming localhost.
      */
     try {
-      return new URL(this.fallbackConfig.origin).origin;
+      return new URL(this.fallbackConfig.origin ?? '').origin;
     } catch {
       throw new Error(
         'jeap-jwe-client: cannot resolve the request origin outside a browser. ' +

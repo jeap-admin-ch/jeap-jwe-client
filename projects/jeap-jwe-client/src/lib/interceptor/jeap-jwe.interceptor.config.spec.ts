@@ -619,3 +619,82 @@ describe('jeapJweInterceptor discovery endpoints under a context path', () => {
     expect(jwksResponse).toEqual({ keys: [] });
   });
 });
+
+describe('jeapJweInterceptor with a zero-configuration setup', () => {
+  let http: HttpClient;
+  let httpMock: HttpTestingController;
+
+  const sameOrigin = globalThis.location.origin;
+
+  beforeEach(() => {
+    TestBed.configureTestingModule({
+      providers: [
+        /**
+         * No options at all: the backend origin defaults to the frontend's
+         * own origin and the discovery endpoint paths default to the
+         * application base path plus the well-known paths - the standard
+         * jEAP SCS deployment where the frontend is served by its backend.
+         */
+        provideJeapJweClient(),
+        provideHttpClient(withInterceptors([jeapJweInterceptor])),
+        provideHttpClientTesting(),
+
+        {
+          provide: JweRequestEncryptor,
+          useClass: FakeJweRequestEncryptor,
+        },
+        {
+          provide: JweResponseDecryptor,
+          useClass: FakeJweResponseDecryptor,
+        },
+      ],
+    });
+
+    http = TestBed.inject(HttpClient);
+    httpMock = TestBed.inject(HttpTestingController);
+  });
+
+  afterEach(() => {
+    httpMock.verify();
+  });
+
+  it('loads the backend configuration from the defaulted origin and protects requests', () => {
+    let actualResponse: unknown;
+
+    http.get('/api/persons/123').subscribe(response => {
+      actualResponse = response;
+    });
+
+    /**
+     * The test page has a root-level base URI, so the derived base path is
+     * empty and the discovery endpoint resolves to the well-known default on
+     * the frontend's own origin.
+     */
+    const backendConfigRequest = httpMock.expectOne(
+      `${sameOrigin}/.well-known/jwe-configuration`
+    );
+
+    backendConfigRequest.flush({
+      jwksPath: '/.well-known/jwks.json',
+    });
+
+    const apiRequest = httpMock.expectOne('/api/persons/123');
+
+    expect(apiRequest.request.headers.get('JWE-Response-Key')).toBe(
+      'encrypted-response-key'
+    );
+
+    apiRequest.flush('encrypted-response-body', {
+      headers: new HttpHeaders({
+        'Content-Type': 'application/jose',
+      }),
+    });
+
+    expect(actualResponse).toEqual({
+      decrypted: true,
+      method: 'GET',
+      path: '/api/persons/123',
+      encryptedBody: 'encrypted-response-body',
+    });
+  });
+});

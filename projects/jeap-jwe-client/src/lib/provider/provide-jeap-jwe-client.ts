@@ -1,10 +1,15 @@
 import { EnvironmentProviders, makeEnvironmentProviders } from '@angular/core';
 
 import {
+  deriveBasePath,
   isSecureBackendUrl,
   resolveBackendOrigin,
 } from '../config/backend-url';
 import { JeapJweClientConfig } from '../config/jeap-jwe-client-config';
+import {
+  DEFAULT_JWE_CONFIG_PATH,
+  DEFAULT_JWKS_PATH,
+} from '../config/jeap-jwe-defaults';
 import { JeapJweClientConfigService } from '../config/jeap-jwe-client-config.service';
 import { JEAP_JWE_CLIENT_CONFIG } from '../config/jeap-jwe-client.tokens';
 import { JoseJweRequestEncryptor } from '../crypto/jose-jwe-request-encryptor';
@@ -24,16 +29,25 @@ import { JweEndpointMatcher } from '../matcher/jwe-endpoint-matcher';
  * interceptor itself, e.g.
  * `provideHttpClient(withInterceptors([jeapJweInterceptor]))`. This keeps the
  * application in control of interceptor ordering and other HttpClient features.
+ *
+ * All options have defaults suited to the standard jEAP SCS deployment where
+ * the frontend is served by its backend's web server: the backend origin
+ * defaults to the frontend's own origin, and the discovery endpoint paths
+ * default to the application base path (the Angular base href, which matches
+ * the backend's servlet context path in that deployment) plus the well-known
+ * paths - so `provideJeapJweClient()` without options is a complete setup.
  */
 export function provideJeapJweClient(
-  config: JeapJweClientConfig
+  config: JeapJweClientConfig = {}
 ): EnvironmentProviders {
-  assertSecureBackendOrigin(config.origin);
+  const resolvedConfig = withBrowserDefaults(config);
+
+  assertSecureBackendOrigin(resolvedConfig.origin);
 
   return makeEnvironmentProviders([
     {
       provide: JEAP_JWE_CLIENT_CONFIG,
-      useValue: config,
+      useValue: resolvedConfig,
     },
 
     JeapJweClientConfigService,
@@ -57,10 +71,28 @@ export function provideJeapJweClient(
 }
 
 /**
+ * Fills the deployment-dependent defaults from the browser environment: the
+ * frontend's own origin and the base-path-prefixed discovery endpoint paths.
+ * Outside a browser (e.g. SSR), omitted values stay unset and the origin must
+ * be configured explicitly.
+ */
+function withBrowserDefaults(config: JeapJweClientConfig): JeapJweClientConfig {
+  const basePath = deriveBasePath();
+
+  return {
+    ...config,
+    origin: config.origin ?? globalThis.location?.origin,
+    jweConfigPath:
+      config.jweConfigPath ?? `${basePath}${DEFAULT_JWE_CONFIG_PATH}`,
+    jwksPath: config.jwksPath ?? `${basePath}${DEFAULT_JWKS_PATH}`,
+  };
+}
+
+/**
  * Fails fast when the configured backend origin is not served over a secure
  * transport. Plaintext HTTP is only tolerated for localhost development.
  */
-function assertSecureBackendOrigin(origin: string): void {
+function assertSecureBackendOrigin(origin?: string): void {
   let originUrl: URL;
 
   try {
