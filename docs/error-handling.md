@@ -48,6 +48,10 @@ The client surfaces both codes raised on the client and codes reported by the ba
 | `JWE_KEY_RETRIEVAL_FAILED`         | JWKS could not be loaded                               |
 | `JWE_JWKS_INVALID`                 | JWKS is structurally invalid or contains invalid keys  |
 
+## Failing closed on configuration errors
+
+`JWE_CONFIG_LOAD_FAILED` is raised for every request to the backend origin that is not excluded when the backend configuration cannot be loaded. The client never falls back to sending such requests unprotected: without the backend-published include patterns it cannot know whether the backend considers a path protected, and a potentially protected payload must not leave the browser in plaintext. The error is retryable — a failed configuration load is not cached, so the next request triggers a new load.
+
 ## Automatic retry
 
 The client retries a request automatically only on an HTTP 400 problem+json response whose body field `code` equals `JWE_UNKNOWN_KEY_ID`. The client refreshes JWKS and retries the original request once. If the retry fails again, the typed error is returned to the application.

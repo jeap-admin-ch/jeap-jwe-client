@@ -66,6 +66,15 @@ GET /.well-known/jwks.json
 
 Both URLs are resolved against the configured `origin`.
 
+> **Backend under a servlet context path:** when the backend runs under a context path (e.g. `/myapp`), point the discovery endpoint at it — nothing else is required. The backend publishes context-path-prefixed include/exclude patterns, and the client only makes include decisions once that configuration is loaded:
+>
+> ```ts
+> provideJeapJweClient({
+>   origin: 'https://api.example.ch',
+>   jweConfigPath: '/myapp/.well-known/jwe-configuration',
+> });
+> ```
+
 For example, with this configuration:
 
 ```ts

@@ -453,4 +453,60 @@ describe('JweEndpointMatcher', () => {
       expect(result).toBeNull();
     });
   });
+
+  describe('pre-configuration decisions', () => {
+    it('recognizes requests to the configured backend origin', () => {
+      const matcher = configure({ enabled: true, origin: sameOrigin });
+      const config = resolved({ enabled: true, origin: sameOrigin });
+
+      expect(
+        matcher.isRequestToConfiguredOrigin(request('GET', '/api/x'), config)
+      ).toBeTrue();
+      expect(
+        matcher.isRequestToConfiguredOrigin(
+          request('GET', `${sameOrigin}/anything`),
+          config
+        )
+      ).toBeTrue();
+      expect(
+        matcher.isRequestToConfiguredOrigin(
+          request('GET', 'https://other.example/api/x'),
+          config
+        )
+      ).toBeFalse();
+    });
+
+    it('recognizes locally excluded requests regardless of include patterns', () => {
+      const matcher = configure({ enabled: true, origin: sameOrigin });
+      const config = resolved({
+        enabled: true,
+        origin: sameOrigin,
+        exclude: ['/api/public/**'],
+      });
+
+      expect(
+        matcher.isRequestExcluded(request('GET', '/api/public/status'), config)
+      ).toBeTrue();
+      expect(
+        matcher.isRequestExcluded(
+          request('GET', '/.well-known/jwks.json'),
+          config
+        )
+      ).toBeTrue();
+      expect(
+        matcher.isRequestExcluded(request('GET', '/api/persons'), config)
+      ).toBeFalse();
+
+      /**
+       * A path outside the local include defaults is NOT excluded: the include
+       * decision belongs to the effective (backend-informed) configuration.
+       */
+      expect(
+        matcher.isRequestExcluded(
+          request('GET', '/jme-jwe-scs/api/persons'),
+          config
+        )
+      ).toBeFalse();
+    });
+  });
 });

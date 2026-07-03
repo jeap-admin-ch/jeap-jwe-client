@@ -70,6 +70,32 @@ export class JweEndpointMatcher {
     };
   }
 
+  /**
+   * Decides whether the request targets the configured backend origin. This
+   * decision is stable across backend configuration loading: the backend
+   * configuration never changes the origin, so a mismatch may short-circuit
+   * before the configuration has been loaded.
+   */
+  isRequestToConfiguredOrigin(
+    request: HttpRequest<unknown>,
+    config: JeapJweResolvedClientConfig
+  ): boolean {
+    return this.toUrl(request.url).origin === this.toOrigin(config.origin);
+  }
+
+  /**
+   * Decides whether the request path matches an exclude pattern of the given
+   * configuration. Local exclude patterns are always part of the effective
+   * exclude list, so a match against the local configuration is final even
+   * before the backend configuration has been loaded.
+   */
+  isRequestExcluded(
+    request: HttpRequest<unknown>,
+    config: JeapJweResolvedClientConfig
+  ): boolean {
+    return this.isExcluded(config, this.toUrl(request.url).pathname);
+  }
+
   private isIncluded(
     config: JeapJweResolvedClientConfig,
     requestPath: string

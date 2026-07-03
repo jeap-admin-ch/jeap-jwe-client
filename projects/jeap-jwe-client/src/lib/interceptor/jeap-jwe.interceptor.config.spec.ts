@@ -312,6 +312,122 @@ describe('jeapJweInterceptor with backend configuration loading', () => {
     expect(responseDecryptor.calls.length).toBe(0);
   });
 
+  it('protects a request under a servlet context path via backend-published include patterns', () => {
+    let actualResponse: unknown;
+
+    /**
+     * The local default include (/*api*\/**) does not match this path because
+     * the backend runs under a servlet context path. The decision is therefore
+     * deferred to the backend configuration, whose context-path-prefixed
+     * include patterns are authoritative.
+     */
+    http.get('/jme-jwe-scs/api/persons').subscribe(response => {
+      actualResponse = response;
+    });
+
+    const backendConfigRequest = httpMock.expectOne(configUrl);
+
+    backendConfigRequest.flush({
+      jwksPath: '/jme-jwe-scs/.well-known/jwks.json',
+      includedPaths: ['/jme-jwe-scs/api/**'],
+      excludedPaths: [
+        '/jme-jwe-scs/.well-known/**',
+        '/jme-jwe-scs/api/public/**',
+      ],
+    });
+
+    const apiRequest = httpMock.expectOne('/jme-jwe-scs/api/persons');
+
+    expect(apiRequest.request.headers.get('JWE-Response-Key')).toBe(
+      'encrypted-response-key'
+    );
+
+    apiRequest.flush('encrypted-response-body', {
+      headers: new HttpHeaders({
+        'Content-Type': 'application/jose',
+      }),
+    });
+
+    expect(actualResponse).toEqual({
+      decrypted: true,
+      method: 'GET',
+      path: '/jme-jwe-scs/api/persons',
+      encryptedBody: 'encrypted-response-body',
+    });
+
+    expect(requestEncryptor.calls.length).toBe(1);
+    expect(responseDecryptor.calls.length).toBe(1);
+  });
+
+  it('passes through a same-origin request the backend configuration does not include', () => {
+    let actualResponse: unknown;
+
+    http.get('/jme-jwe-scs/ui-api/configuration').subscribe(response => {
+      actualResponse = response;
+    });
+
+    /**
+     * The request is same-origin and not locally excluded, so it waits for the
+     * backend configuration; the backend does not include /ui-api paths, so it
+     * is then forwarded unchanged.
+     */
+    const backendConfigRequest = httpMock.expectOne(configUrl);
+
+    backendConfigRequest.flush({
+      includedPaths: ['/jme-jwe-scs/api/**'],
+      excludedPaths: ['/jme-jwe-scs/.well-known/**'],
+    });
+
+    const apiRequest = httpMock.expectOne('/jme-jwe-scs/ui-api/configuration');
+
+    expect(apiRequest.request.headers.has('JWE-Response-Key')).toBeFalse();
+
+    apiRequest.flush({ clientId: 'example' });
+
+    expect(actualResponse).toEqual({ clientId: 'example' });
+    expect(requestEncryptor.calls.length).toBe(0);
+    expect(responseDecryptor.calls.length).toBe(0);
+  });
+
+  it('fails closed when configuration loading fails for a request outside the local include defaults', () => {
+    let actualError: unknown;
+
+    /**
+     * Without the backend configuration the client cannot know whether this
+     * context-path-prefixed request is protected. It must fail instead of
+     * being sent in plaintext.
+     */
+    http.get('/jme-jwe-scs/api/persons').subscribe({
+      next: () =>
+        fail('The request must not be sent when config loading fails.'),
+      error: error => {
+        actualError = error;
+      },
+    });
+
+    const backendConfigRequest = httpMock.expectOne(configUrl);
+
+    backendConfigRequest.flush(
+      { message: 'Configuration unavailable' },
+      {
+        status: 500,
+        statusText: 'Internal Server Error',
+      }
+    );
+
+    expect(actualError).toEqual(
+      jasmine.objectContaining({
+        name: 'JeapJweError',
+        code: 'JWE_CONFIG_LOAD_FAILED',
+        retryable: true,
+      })
+    );
+
+    httpMock.expectNone('/jme-jwe-scs/api/persons');
+    expect(requestEncryptor.calls.length).toBe(0);
+    expect(responseDecryptor.calls.length).toBe(0);
+  });
+
   it('returns a typed error when backend configuration loading fails', () => {
     let actualError: unknown;
 

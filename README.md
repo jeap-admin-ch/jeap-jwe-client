@@ -8,7 +8,8 @@ ordinary `HttpClient` requests and typed JSON responses while protected requests
 
 * Loading backend JWE configuration from `/.well-known/jwe-configuration`, including the backend's include/exclude path patterns
 * Loading backend public encryption keys from the configured JWKS endpoint
-* Protecting requests to a configured backend origin using include/exclude path patterns aligned with the backend
+* Protecting requests to a configured backend origin using the backend-published include/exclude path patterns as the source of truth — a backend under a servlet context path is protected without local pattern configuration
+* Failing closed: if the backend configuration cannot be loaded, requests to the backend origin that are not locally excluded fail with `JWE_CONFIG_LOAD_FAILED` instead of being sent unprotected
 * Encrypting JSON request bodies as compact JWE using `RSA-OAEP-256` and `A256GCM`
 * Sending a request-local response content encryption key in the `JWE-Response-Key` header
 * Setting `Accept: application/jose` for protected requests
