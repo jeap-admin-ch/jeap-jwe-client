@@ -21,12 +21,12 @@ The endpoint is public and unencrypted. The client reads these fields:
 
 | Field                     | How the client uses it                                                              |
 |---------------------------|-------------------------------------------------------------------------------------|
-| `contentTypeAllowlist`    | Validates the outgoing request `cty` against it; default `["application/json"]`.     |
-| `jwksPath`                | Maps it to the JWKS URL it loads.                                                    |
-| `responseKeyHeader`       | Name of the header carrying the response-key envelope (default `JWE-Response-Key`).  |
+| `contentTypeAllowlist`    | Validates the outgoing request `cty` against it; default `["application/json"]`.    |
+| `jwksPath`                | Maps it to the JWKS URL it loads.                                                   |
+| `responseKeyHeader`       | Name of the header carrying the response-key envelope (default `JWE-Response-Key`). |
 | `includedPaths`           | Effective include patterns — used as the source of truth for the protect decision.  |
-| `excludedPaths`           | Effective exclude patterns (already include the jEAP defaults).                      |
-| `keyEncryptionAlgorithm`  | Informational — the client uses `RSA-OAEP-256` regardless.                           |
+| `excludedPaths`           | Effective exclude patterns (already include the jEAP defaults).                     |
+| `keyEncryptionAlgorithm`  | Informational — the client uses `RSA-OAEP-256` regardless.                          |
 | `contentEncryptionMethod` | Informational — the client uses `A256GCM` regardless.                               |
 
 `includedPaths`/`excludedPaths` are Spring `PathPattern` strings (no HTTP method): a request is
@@ -52,10 +52,10 @@ Every protected request carries `Accept: application/jose` and the response-key 
 `JWE-Response-Key` header; requests with a body add `Content-Type: application/jose`. The client
 sets these JWE protected headers:
 
-| JWE                    | `alg`          | `enc`     | other                                        |
-|------------------------|----------------|-----------|----------------------------------------------|
-| Request body           | `RSA-OAEP-256` | `A256GCM` | `kid` = `keys[0].kid`, `cty` = request type  |
-| `JWE-Response-Key`     | `RSA-OAEP-256` | `A256GCM` | `kid` = `keys[0].kid`, `cty` = `application/octet-stream` |
+| JWE                | `alg`          | `enc`     | other                                                     |
+|--------------------|----------------|-----------|-----------------------------------------------------------|
+| Request body       | `RSA-OAEP-256` | `A256GCM` | `kid` = `keys[0].kid`, `cty` = request type               |
+| `JWE-Response-Key` | `RSA-OAEP-256` | `A256GCM` | `kid` = `keys[0].kid`, `cty` = `application/octet-stream` |
 
 The `JWE-Response-Key` plaintext is a freshly generated 32-byte response CEK, used by the backend to
 encrypt the response for this request only (see [Security considerations](./security-considerations.md)).

@@ -63,7 +63,6 @@ Tag format:
 v1.0.0
 ```
 
-
 ## Documentation location
 
 The documentation lives in the repository root `docs/` directory so the jEAP

@@ -102,11 +102,11 @@ Once the package exists on npm:
 1. Go to https://www.npmjs.com/package/@jeap/jeap-jwe-client → **Settings** →
    **Trusted Publishing**.
 2. Add a **GitHub Actions** trusted publisher:
-   - **Organization or user**: `jeap-admin-ch`
-   - **Repository**: `jeap-jwe-client`
-   - **Workflow filename**: `build-and-release.yml` (filename only, not a path)
-   - **Environment name**: `release` (must match the workflow's `environment:`)
-   - **Allowed actions**: `npm publish`
+  - **Organization or user**: `jeap-admin-ch`
+  - **Repository**: `jeap-jwe-client`
+  - **Workflow filename**: `build-and-release.yml` (filename only, not a path)
+  - **Environment name**: `release` (must match the workflow's `environment:`)
+  - **Allowed actions**: `npm publish`
 3. Save.
 
 > The GitHub environment name and npm's **Environment name** must match. If you set

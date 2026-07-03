@@ -9,15 +9,15 @@ The goal is to test both sides of the client behavior:
 
 ## Unit test areas
 
-| Area             | What to test                                                               |
-|------------------|----------------------------------------------------------------------------|
+| Area             | What to test                                                                      |
+|------------------|-----------------------------------------------------------------------------------|
 | Interceptor      | Protected requests, non-included/excluded requests, response path, retry handling |
-| Endpoint matcher | Origin matching, include/exclude decision, path patterns, wildcard rules    |
-| Config loader    | Backend config loading, local config, disabled backend config loading      |
-| JWKS             | Loading, validation, cache behavior, refresh, key selection                |
-| Crypto           | Request encryption, response decryption, wrong key, unsupported algorithms |
-| Response CEK     | Header exists, request-local key, `GET` without body                       |
-| Errors           | Unknown key id, malformed JWE, decryption failure                          |
+| Endpoint matcher | Origin matching, include/exclude decision, path patterns, wildcard rules          |
+| Config loader    | Backend config loading, local config, disabled backend config loading             |
+| JWKS             | Loading, validation, cache behavior, refresh, key selection                       |
+| Crypto           | Request encryption, response decryption, wrong key, unsupported algorithms        |
+| Response CEK     | Header exists, request-local key, `GET` without body                              |
+| Errors           | Unknown key id, malformed JWE, decryption failure                                 |
 
 ## Integration tests
 

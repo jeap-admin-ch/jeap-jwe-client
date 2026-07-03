@@ -26,11 +26,11 @@ Angular application, start with [Getting started](./getting-started.md). For the
 This repository is an Angular workspace. The publishable library lives in `projects/jeap-jwe-client`;
 the workspace root `package.json` is private and only holds development tooling and scripts.
 
-| Path                                    | Purpose                                        |
-|-----------------------------------------|------------------------------------------------|
-| `projects/jeap-jwe-client/src/`         | Library source and specs                       |
+| Path                                    | Purpose                                            |
+|-----------------------------------------|----------------------------------------------------|
+| `projects/jeap-jwe-client/src/`         | Library source and specs                           |
 | `projects/jeap-jwe-client/package.json` | Library package metadata and **published version** |
-| `dist/jeap-jwe-client/`                 | Built package (output of `build:lib`)          |
+| `dist/jeap-jwe-client/`                 | Built package (output of `build:lib`)              |
 
 ## Install
 
@@ -44,16 +44,16 @@ Use `npm ci` (not `npm install`) to install the exact locked dependency versions
 
 All scripts are run from the workspace root.
 
-| Script                          | What it does                                                        |
-|---------------------------------|--------------------------------------------------------------------|
-| `npm run format`                | Format `src/**/*.ts` with Prettier (writes fixes in place)         |
-| `npm run format:check`          | Verify formatting without writing (what CI runs)                   |
-| `npm run lint`                  | Lint `src/**/*.ts` with ESLint                                     |
-| `npm run test`                  | Run the library unit/integration tests once (headless Chrome)      |
-| `npm run test:watch`           | Run the tests in watch mode                                        |
-| `npm run build:lib`             | Build the publishable library into `dist/jeap-jwe-client/`         |
-| `npm run pack:lib`              | Create an npm tarball from the built package                       |
-| `npm run publish:lib:dry-run`   | Dry-run `npm publish` from the built package                       |
+| Script                        | What it does                                                  |
+|-------------------------------|---------------------------------------------------------------|
+| `npm run format`              | Format `src/**/*.ts` with Prettier (writes fixes in place)    |
+| `npm run format:check`        | Verify formatting without writing (what CI runs)              |
+| `npm run lint`                | Lint `src/**/*.ts` with ESLint                                |
+| `npm run test`                | Run the library unit/integration tests once (headless Chrome) |
+| `npm run test:watch`          | Run the tests in watch mode                                   |
+| `npm run build:lib`           | Build the publishable library into `dist/jeap-jwe-client/`    |
+| `npm run pack:lib`            | Create an npm tarball from the built package                  |
+| `npm run publish:lib:dry-run` | Dry-run `npm publish` from the built package                  |
 
 The test strategy (unit areas, integration flow, protocol trace) is documented in
 [Testing](./testing.md).
@@ -77,13 +77,13 @@ running `npm run format` before committing avoids it.
 `.github/workflows/build-and-release.yml` runs on every branch push (tags excluded) and via manual dispatch,
 with the following jobs:
 
-| Job                                | What it checks                                                                                     |
-|------------------------------------|----------------------------------------------------------------------------------------------------|
-| **Lint and format**                | `npm run format:check` then `npm run lint`                                                         |
+| Job                                | What it checks                                                                                                                                                                                                                                                                                   |
+|------------------------------------|--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| **Lint and format**                | `npm run format:check` then `npm run lint`                                                                                                                                                                                                                                                       |
 | **Update third-party licenses**    | On feature branches: if `THIRD-PARTY-LICENSES.md` is outdated, regenerates, commits and pushes it, then **fails on purpose** so the build does not complete against stale licenses — re-run the workflow (or push again) to build the updated commit. On `main`: verify-only — fails if outdated |
-| **Angular 20/21/22 compatibility** | Installs the latest patch of each Angular major, then runs tests and builds the library against it |
-| **Package**                        | Runs tests, builds, verifies the dist contents, creates the npm tarball and runs a publish dry run |
-| **Release to npm**                 | On `main` only: if `projects/jeap-jwe-client/package.json` has no matching `v<version>` tag, builds, publishes to npm via trusted publishing (OIDC, in the `release` environment) and pushes a `vX.Y.Z` record tag. A merge without a version bump is a no-op |
+| **Angular 20/21/22 compatibility** | Installs the latest patch of each Angular major, then runs tests and builds the library against it                                                                                                                                                                                               |
+| **Package**                        | Runs tests, builds, verifies the dist contents, creates the npm tarball and runs a publish dry run                                                                                                                                                                                               |
+| **Release to npm**                 | On `main` only: if `projects/jeap-jwe-client/package.json` has no matching `v<version>` tag, builds, publishes to npm via trusted publishing (OIDC, in the `release` environment) and pushes a `vX.Y.Z` record tag. A merge without a version bump is a no-op                                    |
 
 Publishing is part of this single workflow — there is no separate release workflow. The publish flow
 and the one-time setup are described in [Publishing and versioning](./publishing-and-versioning.md)
