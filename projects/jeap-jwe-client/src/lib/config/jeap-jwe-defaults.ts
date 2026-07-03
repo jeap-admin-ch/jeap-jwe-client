@@ -1,12 +1,17 @@
 /**
- * Default protocol values shared by the configuration service and the endpoint
- * matcher. Keeping them in a single module prevents the resolved-configuration
- * defaults from drifting apart.
+ * Default protocol values and default resolution shared by the provider, the
+ * configuration service and the endpoint matcher. Keeping them in a single
+ * module prevents the resolved-configuration defaults from drifting apart.
  */
 
+import { APP_BASE_HREF, PlatformLocation } from '@angular/common';
+import { inject } from '@angular/core';
+
+import { deriveBasePath, isSameOriginBackend } from './backend-url';
 import {
   JeapJweBackendConfigResponse,
   JeapJweClientConfig,
+  JeapJweClientConfigWithDefaults,
 } from './jeap-jwe-client-config';
 
 /**
@@ -53,6 +58,51 @@ export const DEFAULT_EXCLUDED_PATHS: readonly string[] = [
   '/actuator/**',
   '/health',
 ];
+
+/**
+ * Resolves the environment-dependent configuration defaults: the backend
+ * origin defaults to the frontend's own origin, and the discovery endpoint
+ * paths default to the well-known paths - prefixed with the application base
+ * path only when the backend origin is the frontend's own origin (the
+ * deployment where the backend serves the frontend and the base href matches
+ * its servlet context path). An explicitly configured cross-origin backend
+ * keeps the root well-known defaults.
+ *
+ * Both `provideJeapJweClient()` and the configuration service resolve the
+ * configuration through this single function, so a directly provided
+ * `JEAP_JWE_CLIENT_CONFIG` gets the same defaults as the provider. The
+ * resolution is idempotent.
+ */
+export function resolveClientConfigDefaults(
+  config: JeapJweClientConfig,
+  baseHref?: string
+): JeapJweClientConfigWithDefaults {
+  const basePath = isSameOriginBackend(config.origin)
+    ? deriveBasePath(baseHref)
+    : '';
+
+  return {
+    ...config,
+    origin: config.origin ?? globalThis.location?.origin,
+    jweConfigPath:
+      config.jweConfigPath ?? `${basePath}${DEFAULT_JWE_CONFIG_PATH}`,
+    jwksPath: config.jwksPath ?? `${basePath}${DEFAULT_JWKS_PATH}`,
+  };
+}
+
+/**
+ * Injects the application base href the way Angular's `Location` resolves it:
+ * an `APP_BASE_HREF` provider wins over the DOM `<base>` element. Returns
+ * `undefined` when neither is available; `deriveBasePath` then falls back to
+ * the document base URI. Must be called in an injection context.
+ */
+export function injectAppBaseHref(): string | undefined {
+  return (
+    inject(APP_BASE_HREF, { optional: true }) ??
+    inject(PlatformLocation, { optional: true })?.getBaseHrefFromDOM() ??
+    undefined
+  );
+}
 
 /**
  * Resolves the effective include patterns. The backend's published
