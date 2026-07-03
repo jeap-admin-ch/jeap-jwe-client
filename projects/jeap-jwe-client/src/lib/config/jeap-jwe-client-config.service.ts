@@ -52,14 +52,45 @@ export class JeapJweClientConfigService {
   /**
    * Returns the local configuration resolved with defaults.
    *
-   * The interceptor uses this snapshot for the decisions that are stable
-   * before the backend configuration is available: the enabled flag, the
-   * configured backend origin, and the local/default exclude patterns.
-   * Include decisions are never made against this snapshot - they are
-   * deferred to the effective (backend-informed) configuration.
+   * The interceptor uses this snapshot only for the enabled flag and the
+   * configured backend origin; it is also the effective configuration when
+   * `loadBackendConfig` is `false`. Include and exclude decisions before the
+   * backend configuration is available are made against
+   * {@link getStableExclusionPatterns} instead.
    */
   getLocalConfigSnapshot(): JeapJweResolvedClientConfig {
     return this.resolveConfig(undefined);
+  }
+
+  /**
+   * Returns the exclusion patterns that are stable before the backend
+   * configuration is available:
+   *
+   * - the local `exclude` patterns, which are always appended to the
+   *   effective exclude list, so a match is final, and
+   * - the resolved discovery endpoints (the JWE configuration and JWKS
+   *   paths), which are always exempt from JWE protection by construction -
+   *   including context-path-prefixed paths that the default exclude
+   *   patterns would not cover.
+   *
+   * The client default excludes are deliberately NOT part of this list: the
+   * backend's published `excludedPaths` replace them, so a default-exclude
+   * match is not a stable decision and must be made against the effective
+   * configuration.
+   */
+  getStableExclusionPatterns(): string[] {
+    return [
+      ...(this.localConfig.exclude ?? []),
+      this.resolvePathname(
+        this.localConfig.jweConfigPath ?? DEFAULT_JWE_CONFIG_PATH
+      ),
+      this.resolvePathname(this.localConfig.jwksPath ?? DEFAULT_JWKS_PATH),
+    ];
+  }
+
+  private resolvePathname(path: string): string {
+    return new URL(path, resolveBackendOrigin(this.localConfig.origin))
+      .pathname;
   }
 
   /**

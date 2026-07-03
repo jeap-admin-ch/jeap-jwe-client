@@ -84,16 +84,18 @@ export class JweEndpointMatcher {
   }
 
   /**
-   * Decides whether the request path matches an exclude pattern of the given
-   * configuration. Local exclude patterns are always part of the effective
-   * exclude list, so a match against the local configuration is final even
-   * before the backend configuration has been loaded.
+   * Decides whether the request path matches any of the given path patterns.
+   * The interceptor uses this with the stable exclusion patterns (local
+   * excludes and the discovery endpoints) before the backend configuration
+   * has been loaded - a match against those is final because they are always
+   * part of the effective exclude list.
    */
-  isRequestExcluded(
+  isRequestMatchingPatterns(
     request: HttpRequest<unknown>,
-    config: JeapJweResolvedClientConfig
+    patterns: string[]
   ): boolean {
-    return this.isExcluded(config, this.toUrl(request.url).pathname);
+    const requestPath = this.toUrl(request.url).pathname;
+    return patterns.some(pattern => this.matchesPath(pattern, requestPath));
   }
 
   private isIncluded(

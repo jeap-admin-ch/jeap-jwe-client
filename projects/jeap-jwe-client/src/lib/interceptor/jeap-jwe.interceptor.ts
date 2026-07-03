@@ -32,16 +32,17 @@ export const jeapJweInterceptor: HttpInterceptorFn = (request, next) => {
 
   /**
    * Only decisions that cannot change once the backend configuration arrives
-   * are made against the local configuration: a disabled client, a request to
-   * another origin, and exclude patterns (local excludes are always part of
-   * the effective exclude list, and the default excludes mirror the backend's
-   * built-in excludes for its discovery and health endpoints).
+   * are made locally: a disabled client, a request to another origin, the
+   * local exclude patterns (always part of the effective exclude list), and
+   * the discovery endpoints (the JWE configuration and JWKS paths, exempt
+   * from JWE protection by construction).
    *
-   * Include decisions are deliberately NOT made locally: the backend-published
-   * include patterns are authoritative and may be broader than the local
-   * defaults - most notably when the backend runs under a servlet context
-   * path and publishes context-path-prefixed patterns. Deciding includes
-   * locally would silently send such requests in plaintext.
+   * Include decisions and the client default excludes are deliberately NOT
+   * decided locally: the backend-published patterns are authoritative and
+   * may differ from the local defaults - most notably when the backend runs
+   * under a servlet context path and publishes context-path-prefixed
+   * patterns. Deciding them locally could silently send protected requests
+   * in plaintext.
    */
   const localConfig = configService.getLocalConfigSnapshot();
 
@@ -53,7 +54,12 @@ export const jeapJweInterceptor: HttpInterceptorFn = (request, next) => {
     return next(request);
   }
 
-  if (endpointMatcher.isRequestExcluded(request, localConfig)) {
+  if (
+    endpointMatcher.isRequestMatchingPatterns(
+      request,
+      configService.getStableExclusionPatterns()
+    )
+  ) {
     return next(request);
   }
 

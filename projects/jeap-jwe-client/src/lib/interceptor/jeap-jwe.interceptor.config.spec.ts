@@ -289,7 +289,7 @@ describe('jeapJweInterceptor with backend configuration loading', () => {
     });
 
     /**
-     * The config endpoint is part of the default blacklist.
+     * The config endpoint is a discovery endpoint and always exempt.
      * Therefore it must not trigger a second recursive config request.
      */
     const configEndpointRequest = httpMock.expectOne(
@@ -428,6 +428,82 @@ describe('jeapJweInterceptor with backend configuration loading', () => {
     expect(responseDecryptor.calls.length).toBe(0);
   });
 
+  it('defers a default-exclude match to the effective configuration', () => {
+    let actualResponse: unknown;
+
+    /**
+     * Client default excludes are not a stable decision: the backend's
+     * published excludedPaths replace them. The request therefore waits for
+     * the configuration and is then decided by the effective patterns.
+     */
+    http.get('/actuator/health').subscribe(response => {
+      actualResponse = response;
+    });
+
+    const backendConfigRequest = httpMock.expectOne(configUrl);
+
+    backendConfigRequest.flush({
+      includedPaths: ['/*api*/**'],
+      excludedPaths: ['/actuator/**'],
+    });
+
+    const apiRequest = httpMock.expectOne('/actuator/health');
+
+    expect(apiRequest.request.headers.has('JWE-Response-Key')).toBeFalse();
+
+    apiRequest.flush({ status: 'UP' });
+
+    expect(actualResponse).toEqual({ status: 'UP' });
+    expect(requestEncryptor.calls.length).toBe(0);
+    expect(responseDecryptor.calls.length).toBe(0);
+  });
+
+  it('protects a path matching a client default exclude when the backend includes it', () => {
+    let actualResponse: unknown;
+
+    /**
+     * The backend includes everything and its published excludes do not
+     * cover /health. The client default exclude (/health) must not downgrade
+     * this request to plaintext - the effective configuration wins.
+     */
+    http.post('/health', { probe: true }).subscribe(response => {
+      actualResponse = response;
+    });
+
+    const backendConfigRequest = httpMock.expectOne(configUrl);
+
+    backendConfigRequest.flush({
+      includedPaths: ['/**'],
+      excludedPaths: [
+        '/.well-known/jwks.json',
+        '/.well-known/jwe-configuration',
+      ],
+    });
+
+    const apiRequest = httpMock.expectOne('/health');
+
+    expect(apiRequest.request.body).toBe('encrypted-request-body');
+    expect(apiRequest.request.headers.get('JWE-Response-Key')).toBe(
+      'encrypted-response-key'
+    );
+
+    apiRequest.flush('encrypted-response-body', {
+      headers: new HttpHeaders({
+        'Content-Type': 'application/jose',
+      }),
+    });
+
+    expect(actualResponse).toEqual({
+      decrypted: true,
+      method: 'POST',
+      path: '/health',
+      encryptedBody: 'encrypted-response-body',
+    });
+
+    expect(requestEncryptor.calls.length).toBe(1);
+    expect(responseDecryptor.calls.length).toBe(1);
+  });
+
   it('returns a typed error when backend configuration loading fails', () => {
     let actualError: unknown;
 
@@ -465,5 +541,81 @@ describe('jeapJweInterceptor with backend configuration loading', () => {
     );
 
     httpMock.expectNone('/api/persons/123');
+  });
+});
+
+describe('jeapJweInterceptor discovery endpoints under a context path', () => {
+  let http: HttpClient;
+  let httpMock: HttpTestingController;
+
+  const sameOrigin = globalThis.location.origin;
+
+  beforeEach(() => {
+    TestBed.configureTestingModule({
+      providers: [
+        provideJeapJweClient({
+          enabled: true,
+          origin: sameOrigin,
+          loadBackendConfig: true,
+
+          /**
+           * Context-path-prefixed discovery endpoints, which the default
+           * exclude patterns (/.well-known/**) would not cover. Default
+           * excludes are additionally turned off to prove the exemption does
+           * not depend on them.
+           */
+          jweConfigPath: '/myapp/.well-known/jwe-configuration',
+          jwksPath: '/myapp/.well-known/jwks.json',
+          useDefaultExcludes: false,
+        }),
+        provideHttpClient(withInterceptors([jeapJweInterceptor])),
+        provideHttpClientTesting(),
+      ],
+    });
+
+    http = TestBed.inject(HttpClient);
+    httpMock = TestBed.inject(HttpTestingController);
+  });
+
+  afterEach(() => {
+    httpMock.verify();
+  });
+
+  it('never protects the discovery endpoints and does not trigger a config load for them', () => {
+    let configResponse: unknown;
+    let jwksResponse: unknown;
+
+    http.get('/myapp/.well-known/jwe-configuration').subscribe(response => {
+      configResponse = response;
+    });
+    http.get('/myapp/.well-known/jwks.json').subscribe(response => {
+      jwksResponse = response;
+    });
+
+    /**
+     * Both requests are exempt by construction: they are forwarded unchanged
+     * and no additional configuration load is triggered.
+     */
+    const configEndpointRequest = httpMock.expectOne(
+      '/myapp/.well-known/jwe-configuration'
+    );
+    const jwksEndpointRequest = httpMock.expectOne(
+      '/myapp/.well-known/jwks.json'
+    );
+
+    expect(
+      configEndpointRequest.request.headers.has('JWE-Response-Key')
+    ).toBeFalse();
+    expect(
+      jwksEndpointRequest.request.headers.has('JWE-Response-Key')
+    ).toBeFalse();
+
+    configEndpointRequest.flush({ jwksPath: '/myapp/.well-known/jwks.json' });
+    jwksEndpointRequest.flush({ keys: [] });
+
+    expect(configResponse).toEqual({
+      jwksPath: '/myapp/.well-known/jwks.json',
+    });
+    expect(jwksResponse).toEqual({ keys: [] });
   });
 });

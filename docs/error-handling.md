@@ -50,7 +50,7 @@ The client surfaces both codes raised on the client and codes reported by the ba
 
 ## Failing closed on configuration errors
 
-`JWE_CONFIG_LOAD_FAILED` is raised for every request to the backend origin that is not excluded when the backend configuration cannot be loaded. The client never falls back to sending such requests unprotected: without the backend-published include patterns it cannot know whether the backend considers a path protected, and a potentially protected payload must not leave the browser in plaintext. The error is retryable — a failed configuration load is not cached, so the next request triggers a new load.
+`JWE_CONFIG_LOAD_FAILED` is raised for every request to the backend origin that is neither matched by a local `exclude` pattern nor addressed to a discovery endpoint when the backend configuration cannot be loaded. The client never falls back to sending such requests unprotected: without the backend-published include patterns it cannot know whether the backend considers a path protected, and a potentially protected payload must not leave the browser in plaintext. The error is retryable — a failed configuration load is not cached, so the next request triggers a new load.
 
 ## Automatic retry
 
