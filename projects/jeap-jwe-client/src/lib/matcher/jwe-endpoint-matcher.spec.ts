@@ -476,35 +476,49 @@ describe('JweEndpointMatcher', () => {
       ).toBeFalse();
     });
 
-    it('recognizes locally excluded requests regardless of include patterns', () => {
+    it('matches requests against explicit stable exclusion patterns', () => {
       const matcher = configure({ enabled: true, origin: sameOrigin });
-      const config = resolved({
-        enabled: true,
-        origin: sameOrigin,
-        exclude: ['/api/public/**'],
-      });
+      const patterns = ['/api/public/**', '/.well-known/jwe-configuration'];
 
       expect(
-        matcher.isRequestExcluded(request('GET', '/api/public/status'), config)
+        matcher.isRequestMatchingPatterns(
+          request('GET', '/api/public/status'),
+          patterns
+        )
       ).toBeTrue();
+
+      /**
+       * Wildcard-free patterns (the discovery endpoints) match exactly.
+       */
       expect(
-        matcher.isRequestExcluded(
-          request('GET', '/.well-known/jwks.json'),
-          config
+        matcher.isRequestMatchingPatterns(
+          request('GET', '/.well-known/jwe-configuration'),
+          patterns
         )
       ).toBeTrue();
       expect(
-        matcher.isRequestExcluded(request('GET', '/api/persons'), config)
+        matcher.isRequestMatchingPatterns(
+          request('GET', '/.well-known/jwe-configuration/sub'),
+          patterns
+        )
+      ).toBeFalse();
+
+      expect(
+        matcher.isRequestMatchingPatterns(
+          request('GET', '/api/persons'),
+          patterns
+        )
       ).toBeFalse();
 
       /**
-       * A path outside the local include defaults is NOT excluded: the include
-       * decision belongs to the effective (backend-informed) configuration.
+       * A path outside the patterns is NOT matched: include decisions and
+       * default excludes belong to the effective (backend-informed)
+       * configuration.
        */
       expect(
-        matcher.isRequestExcluded(
+        matcher.isRequestMatchingPatterns(
           request('GET', '/jme-jwe-scs/api/persons'),
-          config
+          patterns
         )
       ).toBeFalse();
     });

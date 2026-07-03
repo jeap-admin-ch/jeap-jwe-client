@@ -17,6 +17,11 @@ to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - Fail closed: when the backend configuration cannot be loaded, requests to the backend origin that
   are not excluded fail with `JWE_CONFIG_LOAD_FAILED` instead of being sent unprotected. Previously,
   requests outside the local include patterns were silently sent in plaintext in this situation.
+- Only stable exclusions short-circuit before the backend configuration is loaded: the local
+  `exclude` patterns and the discovery endpoints (the resolved `jweConfigPath` and `jwksPath`,
+  which are always exempt from JWE protection - including context-path-prefixed paths). The client
+  default excludes no longer make a final local decision, because the backend's published
+  `excludedPaths` replace them; they are applied as part of the effective configuration instead.
 
 ## [1.1.0] - 2026-06-26
 

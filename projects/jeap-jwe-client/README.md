@@ -15,7 +15,7 @@ The library protects requests to a configured backend origin, encrypts supported
 - Decrypts backend responses that use `alg: dir` and `enc: A256GCM`.
 - Refreshes JWKS and retries once when the backend returns `JWE_UNKNOWN_KEY_ID`.
 - Protects only paths matching an include and no exclude pattern, using the backend-published patterns as the source of truth; other origins and excluded paths are left untouched.
-- Fails closed: if the backend configuration cannot be loaded, requests to the backend origin that are not locally excluded fail with `JWE_CONFIG_LOAD_FAILED` instead of being sent unprotected.
+- Fails closed: if the backend configuration cannot be loaded, requests to the backend origin that are neither locally excluded nor addressed to the discovery endpoints fail with `JWE_CONFIG_LOAD_FAILED` instead of being sent unprotected.
 
 ## Installation
 
