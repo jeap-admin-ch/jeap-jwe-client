@@ -5,6 +5,19 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/), and this project adheres
 to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.2.0] - 2026-07-03
+
+### Changed
+
+- Include decisions are no longer made against the local configuration before the backend
+  configuration has been loaded. Requests to the backend origin that are not excluded now wait for
+  the (cached, shared) backend configuration and are matched against the backend-published
+  include/exclude patterns. A backend running under a servlet context path is therefore protected
+  out of the box — no local `include` configuration is required anymore.
+- Fail closed: when the backend configuration cannot be loaded, requests to the backend origin that
+  are not excluded fail with `JWE_CONFIG_LOAD_FAILED` instead of being sent unprotected. Previously,
+  requests outside the local include patterns were silently sent in plaintext in this situation.
+
 ## [1.1.0] - 2026-06-26
 
 ### Changed
