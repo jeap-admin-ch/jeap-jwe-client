@@ -67,7 +67,7 @@ The backend can provide values such as:
 
 When the backend publishes `includedPaths` and `excludedPaths`, those are used as the source of truth for the protect/skip decision — the client mirrors the server exactly. The backend's `excludedPaths` already contains the jEAP defaults (actuator, the JWKS and protocol-metadata endpoints, SSE), so the client does not add its own default excludes on top; it only appends any extra patterns from the local `exclude` option. The client maps the backend `jwksPath` to the JWKS URL it loads. The JWKS refresh interval is a client-side default (300 seconds) and is not published by the backend.
 
-> **Context path:** the backend prefixes `includedPaths`, `excludedPaths` and `jwksPath` with its `server.servlet.context-path` when one is configured (e.g. `/myapp/*api*/**`). The client matches request paths relative to the origin root, so these published paths are used as-is — the context path is not a concern the client has to handle separately.
+> **Context path:** the backend prefixes `includedPaths`, `excludedPaths` and `jwksPath` with its `server.servlet.context-path` when one is configured (e.g. `/myapp/*api*/**`). The client matches request paths relative to the origin root, so these published paths are used as-is. Include decisions are only made once the backend configuration is available, so a backend under a context path is protected out of the box — no local `include` configuration is required. Only the discovery endpoint needs the context path prefix (`jweConfigPath: '/myapp/.well-known/jwe-configuration'`).
 
 Use this mode when the backend should centrally manage the JWE protocol settings, including which paths are encrypted.
 
@@ -254,6 +254,8 @@ provideJeapJweClient({
 ```
 
 When backend configuration loading is enabled and the backend publishes `includedPaths`, those take precedence over the local `include`. When neither the backend nor the local configuration provide include patterns, the default `/*api*/**` is used — the same default as the backend (`jeap.jwe.filter.included-paths`).
+
+A request that does not match the include patterns is never rejected locally before the backend configuration has been loaded: the include decision is always made against the effective (backend-informed) configuration. Only requests to other origins and requests matching an exclude pattern skip the configuration load. If the backend configuration cannot be loaded, requests to the backend origin that are not excluded fail with `JWE_CONFIG_LOAD_FAILED` instead of being sent unprotected — exclude paths that must work without the backend configuration via `exclude`.
 
 ## Exclude patterns
 

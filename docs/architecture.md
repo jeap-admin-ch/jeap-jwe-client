@@ -38,7 +38,7 @@ A request is protected only when it matches an include and no exclude — the sa
 
 The config service combines local Angular configuration with optional backend metadata from `/.well-known/jwe-configuration`. When the backend publishes `includedPaths`/`excludedPaths`, those are used as the source of truth for the include/exclude decision (the backend's `excludedPaths` already contains the jEAP defaults); the local `exclude` patterns are appended on top. When the backend does not publish them, the local `include` (or the default `/*api*/**`) and the local + default excludes apply.
 
-It caches the backend config load and avoids loading backend config for requests that are not protected locally (not included, or locally excluded).
+It caches the backend config load. Before the backend configuration is available, the interceptor only makes decisions that cannot change once it arrives: requests to other origins and requests matching an exclude pattern (local excludes are always part of the effective exclude list, and the default excludes mirror the backend's built-in excludes) are passed through without loading the configuration. Every other request to the backend origin waits for the shared, cached configuration load and is then matched against the effective include/exclude patterns — so backend-published patterns, e.g. prefixed with a servlet context path, protect requests even when the local include defaults would not match. If the configuration cannot be loaded, those requests fail with `JWE_CONFIG_LOAD_FAILED` instead of being sent unprotected (fail closed).
 
 ### JWKS client
 

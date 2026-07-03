@@ -31,17 +31,40 @@ export const jeapJweInterceptor: HttpInterceptorFn = (request, next) => {
   const keySelector = inject(JweKeySelector);
 
   /**
-   * Local excludes are evaluated before backend configuration loading.
+   * Only decisions that cannot change once the backend configuration arrives
+   * are made against the local configuration: a disabled client, a request to
+   * another origin, and exclude patterns (local excludes are always part of
+   * the effective exclude list, and the default excludes mirror the backend's
+   * built-in excludes for its discovery and health endpoints).
+   *
+   * Include decisions are deliberately NOT made locally: the backend-published
+   * include patterns are authoritative and may be broader than the local
+   * defaults - most notably when the backend runs under a servlet context
+   * path and publishes context-path-prefixed patterns. Deciding includes
+   * locally would silently send such requests in plaintext.
    */
-  const localMatch = endpointMatcher.match(
-    request,
-    configService.getLocalConfigSnapshot()
-  );
+  const localConfig = configService.getLocalConfigSnapshot();
 
-  if (!localMatch) {
+  if (localConfig.enabled === false) {
     return next(request);
   }
 
+  if (!endpointMatcher.isRequestToConfiguredOrigin(request, localConfig)) {
+    return next(request);
+  }
+
+  if (endpointMatcher.isRequestExcluded(request, localConfig)) {
+    return next(request);
+  }
+
+  /**
+   * Every other request to the backend origin waits for the (cached, shared)
+   * backend configuration and is then matched against the effective include
+   * and exclude patterns. If the configuration cannot be loaded, the request
+   * fails with JWE_CONFIG_LOAD_FAILED instead of being sent unprotected: a
+   * payload the backend may consider protected must never leave the browser
+   * in plaintext (fail closed).
+   */
   return configService.getConfig().pipe(
     switchMap(config => {
       const effectiveMatch = endpointMatcher.match(request, config);
