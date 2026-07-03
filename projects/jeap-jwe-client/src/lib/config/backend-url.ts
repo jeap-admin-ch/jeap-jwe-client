@@ -24,8 +24,26 @@ export function isSecureBackendUrl(url: URL): boolean {
 
 /**
  * Resolves the configured origin to a URL, falling back to the current document
- * origin for relative values.
+ * origin for relative or omitted values.
  */
-export function resolveBackendOrigin(origin: string): URL {
-  return new URL(origin, globalThis.location?.origin);
+export function resolveBackendOrigin(origin?: string): URL {
+  return new URL(origin ?? '', globalThis.location?.origin);
+}
+
+/**
+ * Derives the application base path from the document base URI (the Angular
+ * base href). For a frontend served by its backend under a servlet context
+ * path (base href "/myapp/"), this returns "/myapp"; for a root-served
+ * frontend it returns "". A file-like base URI without a trailing slash
+ * resolves to its directory.
+ *
+ * Outside a browser (no document), the base path is empty.
+ */
+export function deriveBasePath(baseUri = globalThis.document?.baseURI): string {
+  if (!baseUri) {
+    return '';
+  }
+
+  const pathname = new URL(baseUri).pathname;
+  return pathname.slice(0, pathname.lastIndexOf('/'));
 }

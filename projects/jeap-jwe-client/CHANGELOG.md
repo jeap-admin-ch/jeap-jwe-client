@@ -7,6 +7,14 @@ to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [1.2.0] - 2026-07-03
 
+### Added
+
+- Zero-configuration setup: `provideJeapJweClient()` now works without options for the standard
+  jEAP SCS deployment where the frontend is served by its backend's web server. The backend
+  `origin` defaults to the frontend's own origin, and `jweConfigPath`/`jwksPath` default to the
+  application base path (the Angular base href, which matches the backend's servlet context path
+  in that deployment) plus the well-known paths.
+
 ### Changed
 
 - Include decisions are no longer made against the local configuration before the backend

@@ -8,25 +8,36 @@ export interface JeapJweClientConfig {
   /**
    * The single supported backend origin.
    *
+   * Defaults to the frontend's own origin (`globalThis.location.origin`) -
+   * the standard jEAP SCS deployment where the frontend is served by its
+   * backend's web server. Configure it only for cross-origin backends.
+   *
    * Examples:
    * - https://api.example.ch
    * - http://localhost:8080
-   * - globalThis.location.origin for same-origin APIs
    */
-  origin: string;
+  origin?: string;
 
   /**
    * Local JWKS path.
    * Used as fallback when the backend metadata does not provide a JWKS path.
    *
-   * Defaults to "/.well-known/jwks.json".
+   * Defaults to "<base path>/.well-known/jwks.json", where the base path is
+   * derived from the document base URI (the Angular base href) - for a
+   * frontend served by its backend under a servlet context path, the base
+   * href matches the context path, so the default points at the backend's
+   * JWKS endpoint without any configuration.
    */
   jwksPath?: string;
 
   /**
    * Backend JWE configuration (metadata) path.
    *
-   * Defaults to "/.well-known/jwe-configuration".
+   * Defaults to "<base path>/.well-known/jwe-configuration", where the base
+   * path is derived from the document base URI (the Angular base href) - for
+   * a frontend served by its backend under a servlet context path, the base
+   * href matches the context path, so the default points at the backend's
+   * metadata endpoint without any configuration.
    */
   jweConfigPath?: string;
 
