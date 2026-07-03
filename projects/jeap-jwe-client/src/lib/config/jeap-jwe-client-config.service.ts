@@ -52,9 +52,11 @@ export class JeapJweClientConfigService {
   /**
    * Returns the local configuration resolved with defaults.
    *
-   * This is used as a cheap pre-match before the backend configuration
-   * is loaded. It prevents excluded infrastructure endpoints such as
-   * the JWE configuration endpoint from triggering their own config loading.
+   * The interceptor uses this snapshot for the decisions that are stable
+   * before the backend configuration is available: the enabled flag, the
+   * configured backend origin, and the local/default exclude patterns.
+   * Include decisions are never made against this snapshot - they are
+   * deferred to the effective (backend-informed) configuration.
    */
   getLocalConfigSnapshot(): JeapJweResolvedClientConfig {
     return this.resolveConfig(undefined);
