@@ -58,7 +58,9 @@ export const appConfig: ApplicationConfig = {
 No options are needed for the standard jEAP SCS deployment where the frontend is served by its backend's web server:
 
 - `origin` defaults to the frontend's own origin,
-- `jweConfigPath` and `jwksPath` default to the application base path (the Angular base href) plus the well-known paths — and the base href matches the backend's servlet context path in that deployment, because the backend serves the frontend's `index.html` at the root of its context path.
+- `jweConfigPath` and `jwksPath` default to the application base path (the Angular base href) plus the well-known paths — and the base href matches the backend's servlet context path in that deployment, because the backend serves the frontend's `index.html` at the root of its context path. The base href is resolved the way Angular's `Location` resolves it: an `APP_BASE_HREF` provider wins over the `<base>` element.
+
+The base-path prefix applies only when the backend origin is the frontend's own origin. When a cross-origin backend is configured explicitly, the discovery paths default to the root well-known paths (see below).
 
 For a base href of `/myapp/`, the client loads:
 

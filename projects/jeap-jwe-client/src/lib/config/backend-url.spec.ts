@@ -1,4 +1,8 @@
-import { deriveBasePath, resolveBackendOrigin } from './backend-url';
+import {
+  deriveBasePath,
+  isSameOriginBackend,
+  resolveBackendOrigin,
+} from './backend-url';
 
 describe('backend-url', () => {
   describe('deriveBasePath', () => {
@@ -19,12 +23,35 @@ describe('backend-url', () => {
       );
     });
 
+    it('derives the context path from a relative base href', () => {
+      expect(deriveBasePath('/myapp/')).toBe('/myapp');
+      expect(deriveBasePath('/')).toBe('');
+    });
+
     it('derives an empty base path when no base URI is available', () => {
       expect(deriveBasePath(undefined)).toBe('');
     });
 
     it('derives the base path of the current document by default', () => {
       expect(deriveBasePath()).toBe(deriveBasePath(document.baseURI));
+    });
+  });
+
+  describe('isSameOriginBackend', () => {
+    it('treats an omitted origin as same-origin', () => {
+      expect(isSameOriginBackend(undefined)).toBe(true);
+    });
+
+    it('treats a relative origin as same-origin', () => {
+      expect(isSameOriginBackend('')).toBe(true);
+    });
+
+    it("treats the frontend's own origin as same-origin", () => {
+      expect(isSameOriginBackend(globalThis.location.origin)).toBe(true);
+    });
+
+    it('treats another origin as cross-origin', () => {
+      expect(isSameOriginBackend('https://api.example.ch')).toBe(false);
     });
   });
 

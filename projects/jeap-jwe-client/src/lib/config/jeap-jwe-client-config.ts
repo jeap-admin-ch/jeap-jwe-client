@@ -22,22 +22,26 @@ export interface JeapJweClientConfig {
    * Local JWKS path.
    * Used as fallback when the backend metadata does not provide a JWKS path.
    *
-   * Defaults to "<base path>/.well-known/jwks.json", where the base path is
-   * derived from the document base URI (the Angular base href) - for a
-   * frontend served by its backend under a servlet context path, the base
-   * href matches the context path, so the default points at the backend's
-   * JWKS endpoint without any configuration.
+   * Defaults to "<base path>/.well-known/jwks.json" when the backend origin
+   * is the frontend's own origin: for a frontend served by its backend under
+   * a servlet context path, the base path (the Angular base href, from an
+   * `APP_BASE_HREF` provider or the `<base>` element) matches the context
+   * path, so the default points at the backend's JWKS endpoint without any
+   * configuration. For an explicitly configured cross-origin backend it
+   * defaults to the root "/.well-known/jwks.json".
    */
   jwksPath?: string;
 
   /**
    * Backend JWE configuration (metadata) path.
    *
-   * Defaults to "<base path>/.well-known/jwe-configuration", where the base
-   * path is derived from the document base URI (the Angular base href) - for
-   * a frontend served by its backend under a servlet context path, the base
-   * href matches the context path, so the default points at the backend's
-   * metadata endpoint without any configuration.
+   * Defaults to "<base path>/.well-known/jwe-configuration" when the backend
+   * origin is the frontend's own origin: for a frontend served by its backend
+   * under a servlet context path, the base path (the Angular base href, from
+   * an `APP_BASE_HREF` provider or the `<base>` element) matches the context
+   * path, so the default points at the backend's metadata endpoint without
+   * any configuration. For an explicitly configured cross-origin backend it
+   * defaults to the root "/.well-known/jwe-configuration".
    */
   jweConfigPath?: string;
 
@@ -81,6 +85,17 @@ export interface JeapJweClientConfig {
    * (e.g. with `loadBackendConfig: false`). Defaults to true.
    */
   useDefaultExcludes?: boolean;
+}
+
+/**
+ * A {@link JeapJweClientConfig} whose environment-dependent defaults have been
+ * resolved (see `resolveClientConfigDefaults`): the discovery endpoint paths
+ * are always set; the origin is set whenever a document origin is available to
+ * default to.
+ */
+export interface JeapJweClientConfigWithDefaults extends JeapJweClientConfig {
+  jweConfigPath: string;
+  jwksPath: string;
 }
 
 /**

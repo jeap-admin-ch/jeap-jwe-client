@@ -13,7 +13,12 @@ to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   jEAP SCS deployment where the frontend is served by its backend's web server. The backend
   `origin` defaults to the frontend's own origin, and `jweConfigPath`/`jwksPath` default to the
   application base path (the Angular base href, which matches the backend's servlet context path
-  in that deployment) plus the well-known paths.
+  in that deployment) plus the well-known paths. The base-path prefix applies only when the
+  backend origin is the frontend's own origin; an explicitly configured cross-origin backend
+  keeps the root well-known defaults. The base href is resolved like Angular's `Location`: an
+  `APP_BASE_HREF` provider wins over the `<base>` element.
+- The environment-dependent defaults are resolved identically whether the configuration is
+  registered via `provideJeapJweClient()` or by providing `JEAP_JWE_CLIENT_CONFIG` directly.
 
 ### Changed
 

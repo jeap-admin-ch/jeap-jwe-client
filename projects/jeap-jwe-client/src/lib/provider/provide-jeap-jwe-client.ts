@@ -1,14 +1,13 @@
 import { EnvironmentProviders, makeEnvironmentProviders } from '@angular/core';
 
 import {
-  deriveBasePath,
   isSecureBackendUrl,
   resolveBackendOrigin,
 } from '../config/backend-url';
 import { JeapJweClientConfig } from '../config/jeap-jwe-client-config';
 import {
-  DEFAULT_JWE_CONFIG_PATH,
-  DEFAULT_JWKS_PATH,
+  injectAppBaseHref,
+  resolveClientConfigDefaults,
 } from '../config/jeap-jwe-defaults';
 import { JeapJweClientConfigService } from '../config/jeap-jwe-client-config.service';
 import { JEAP_JWE_CLIENT_CONFIG } from '../config/jeap-jwe-client.tokens';
@@ -36,18 +35,29 @@ import { JweEndpointMatcher } from '../matcher/jwe-endpoint-matcher';
  * default to the application base path (the Angular base href, which matches
  * the backend's servlet context path in that deployment) plus the well-known
  * paths - so `provideJeapJweClient()` without options is a complete setup.
+ * The base-path prefix applies only when the backend origin is the frontend's
+ * own origin; an explicitly configured cross-origin backend defaults to the
+ * root well-known paths.
+ *
+ * The defaults are resolved at injection time so the base href can be taken
+ * from an `APP_BASE_HREF` provider, falling back to the DOM `<base>` element.
  */
 export function provideJeapJweClient(
   config: JeapJweClientConfig = {}
 ): EnvironmentProviders {
-  const resolvedConfig = withBrowserDefaults(config);
-
-  assertSecureBackendOrigin(resolvedConfig.origin);
-
   return makeEnvironmentProviders([
     {
       provide: JEAP_JWE_CLIENT_CONFIG,
-      useValue: resolvedConfig,
+      useFactory: () => {
+        const resolvedConfig = resolveClientConfigDefaults(
+          config,
+          injectAppBaseHref()
+        );
+
+        assertSecureBackendOrigin(resolvedConfig.origin);
+
+        return resolvedConfig;
+      },
     },
 
     JeapJweClientConfigService,
@@ -68,24 +78,6 @@ export function provideJeapJweClient(
       useClass: JoseJweResponseDecryptor,
     },
   ]);
-}
-
-/**
- * Fills the deployment-dependent defaults from the browser environment: the
- * frontend's own origin and the base-path-prefixed discovery endpoint paths.
- * Outside a browser (e.g. SSR), omitted values stay unset and the origin must
- * be configured explicitly.
- */
-function withBrowserDefaults(config: JeapJweClientConfig): JeapJweClientConfig {
-  const basePath = deriveBasePath();
-
-  return {
-    ...config,
-    origin: config.origin ?? globalThis.location?.origin,
-    jweConfigPath:
-      config.jweConfigPath ?? `${basePath}${DEFAULT_JWE_CONFIG_PATH}`,
-    jwksPath: config.jwksPath ?? `${basePath}${DEFAULT_JWKS_PATH}`,
-  };
 }
 
 /**

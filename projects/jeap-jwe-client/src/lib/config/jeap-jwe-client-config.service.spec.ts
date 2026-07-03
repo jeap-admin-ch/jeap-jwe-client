@@ -1,3 +1,4 @@
+import { APP_BASE_HREF } from '@angular/common';
 import { provideHttpClient } from '@angular/common/http';
 import {
   HttpTestingController,
@@ -17,7 +18,7 @@ describe('JeapJweClientConfigService', () => {
   let service: JeapJweClientConfigService;
   let httpMock: HttpTestingController;
 
-  function configure(config: object): void {
+  function configure(config: object, baseHref?: string): void {
     TestBed.resetTestingModule();
 
     TestBed.configureTestingModule({
@@ -29,6 +30,9 @@ describe('JeapJweClientConfigService', () => {
           provide: JEAP_JWE_CLIENT_CONFIG,
           useValue: config,
         },
+        ...(baseHref !== undefined
+          ? [{ provide: APP_BASE_HREF, useValue: baseHref }]
+          : []),
       ],
     });
 
@@ -204,6 +208,34 @@ describe('JeapJweClientConfigService', () => {
     const config = await configPromise;
 
     expect(config.jwksUri).toBe('/custom/jwks.json');
+  });
+
+  it('resolves the same base-path-prefixed defaults as provideJeapJweClient for a directly provided configuration', async () => {
+    configure({ origin: sameOrigin }, '/myapp/');
+
+    expect(service.getStableExclusionPatterns()).toEqual([
+      '/myapp/.well-known/jwe-configuration',
+      '/myapp/.well-known/jwks.json',
+    ]);
+
+    const configPromise = firstValueFrom(service.getConfig());
+
+    httpMock
+      .expectOne(`${sameOrigin}/myapp/.well-known/jwe-configuration`)
+      .flush({});
+
+    const config = await configPromise;
+
+    expect(config.jwksUri).toBe('/myapp/.well-known/jwks.json');
+  });
+
+  it('keeps the root well-known defaults for a directly provided cross-origin configuration', () => {
+    configure({ origin: 'https://api.example.ch' }, '/myapp/');
+
+    expect(service.getStableExclusionPatterns()).toEqual([
+      '/.well-known/jwe-configuration',
+      '/.well-known/jwks.json',
+    ]);
   });
 
   it('throws a typed error when backend configuration loading fails', async () => {

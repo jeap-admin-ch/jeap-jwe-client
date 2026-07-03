@@ -31,19 +31,51 @@ export function resolveBackendOrigin(origin?: string): URL {
 }
 
 /**
- * Derives the application base path from the document base URI (the Angular
- * base href). For a frontend served by its backend under a servlet context
- * path (base href "/myapp/"), this returns "/myapp"; for a root-served
+ * Decides whether the configured backend origin is the frontend's own origin -
+ * the deployment where the backend serves the frontend itself. An omitted or
+ * relative origin resolves to the document origin and counts as same-origin.
+ */
+export function isSameOriginBackend(origin?: string): boolean {
+  if (!origin) {
+    return true;
+  }
+
+  try {
+    return resolveBackendOrigin(origin).origin === globalThis.location?.origin;
+  } catch {
+    /**
+     * A relative origin without a document origin (outside a browser)
+     * resolves to the page origin at runtime.
+     */
+    return true;
+  }
+}
+
+/**
+ * Derives the application base path from a base href (the Angular base href,
+ * from an `APP_BASE_HREF` provider or the document `<base>` element), falling
+ * back to the document base URI. A relative base href resolves against the
+ * document origin. For a frontend served by its backend under a servlet
+ * context path (base href "/myapp/"), this returns "/myapp"; for a root-served
  * frontend it returns "". A file-like base URI without a trailing slash
  * resolves to its directory.
  *
  * Outside a browser (no document), the base path is empty.
  */
-export function deriveBasePath(baseUri = globalThis.document?.baseURI): string {
-  if (!baseUri) {
+export function deriveBasePath(
+  baseHref = globalThis.document?.baseURI
+): string {
+  if (!baseHref) {
     return '';
   }
 
-  const pathname = new URL(baseUri).pathname;
+  let pathname: string;
+
+  try {
+    pathname = new URL(baseHref, globalThis.location?.origin).pathname;
+  } catch {
+    return '';
+  }
+
   return pathname.slice(0, pathname.lastIndexOf('/'));
 }

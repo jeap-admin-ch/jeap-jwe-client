@@ -17,13 +17,14 @@ import { isSecureBackendUrl, resolveBackendOrigin } from './backend-url';
 import {
   JeapJweBackendConfigResponse,
   JeapJweClientConfig,
+  JeapJweClientConfigWithDefaults,
   JeapJweResolvedClientConfig,
 } from './jeap-jwe-client-config';
 import {
   DEFAULT_CONTENT_TYPE_ALLOWLIST,
-  DEFAULT_JWE_CONFIG_PATH,
-  DEFAULT_JWKS_PATH,
   DEFAULT_REFRESH_INTERVAL_SECONDS,
+  injectAppBaseHref,
+  resolveClientConfigDefaults,
   resolveExcludedPaths,
   resolveIncludedPaths,
 } from './jeap-jwe-defaults';
@@ -34,14 +35,25 @@ import { JeapJweError } from '../error/jeap-jwe-error';
 @Injectable()
 export class JeapJweClientConfigService {
   private readonly backendHttp: HttpClient;
+  private readonly localConfig: JeapJweClientConfigWithDefaults;
   private resolvedConfig?: JeapJweResolvedClientConfig;
   private inFlightConfig$?: Observable<JeapJweResolvedClientConfig>;
 
   constructor(
     @Inject(JEAP_JWE_CLIENT_CONFIG)
-    private readonly localConfig: JeapJweClientConfig,
+    localConfig: JeapJweClientConfig,
     httpBackend: HttpBackend
   ) {
+    /**
+     * Resolving the defaults here as well (not only in provideJeapJweClient,
+     * where the resolution is idempotent) keeps a directly provided
+     * JEAP_JWE_CLIENT_CONFIG on the same defaults as the provider.
+     */
+    this.localConfig = resolveClientConfigDefaults(
+      localConfig,
+      injectAppBaseHref()
+    );
+
     /**
      * This HttpClient intentionally bypasses Angular interceptors.
      * The JWE backend config request must never be encrypted by this library.
@@ -81,10 +93,8 @@ export class JeapJweClientConfigService {
   getStableExclusionPatterns(): string[] {
     return [
       ...(this.localConfig.exclude ?? []),
-      this.resolvePathname(
-        this.localConfig.jweConfigPath ?? DEFAULT_JWE_CONFIG_PATH
-      ),
-      this.resolvePathname(this.localConfig.jwksPath ?? DEFAULT_JWKS_PATH),
+      this.resolvePathname(this.localConfig.jweConfigPath),
+      this.resolvePathname(this.localConfig.jwksPath),
     ];
   }
 
@@ -153,10 +163,7 @@ export class JeapJweClientConfigService {
   ): JeapJweResolvedClientConfig {
     return {
       ...this.localConfig,
-      jwksUri:
-        backendConfig?.jwksPath ??
-        this.localConfig.jwksPath ??
-        DEFAULT_JWKS_PATH,
+      jwksUri: backendConfig?.jwksPath ?? this.localConfig.jwksPath,
       refreshIntervalSeconds: DEFAULT_REFRESH_INTERVAL_SECONDS,
       include: resolveIncludedPaths(this.localConfig, backendConfig),
       exclude: resolveExcludedPaths(this.localConfig, backendConfig),
@@ -170,10 +177,7 @@ export class JeapJweClientConfigService {
 
   private resolveConfigUrl(): string {
     const base = resolveBackendOrigin(this.localConfig.origin);
-    const configUrl = new URL(
-      this.localConfig.jweConfigPath ?? DEFAULT_JWE_CONFIG_PATH,
-      base
-    );
+    const configUrl = new URL(this.localConfig.jweConfigPath, base);
 
     if (configUrl.origin !== base.origin || !isSecureBackendUrl(configUrl)) {
       throw new JeapJweError(
