@@ -21,6 +21,7 @@ The endpoint is public and unencrypted. The client reads these fields:
 
 | Field                     | How the client uses it                                                              |
 |---------------------------|-------------------------------------------------------------------------------------|
+| `enabled`                 | The backend's master switch — turns the client off unless `enabled` is set locally. |
 | `contentTypeAllowlist`    | Validates the outgoing request `cty` against it; default `["application/json"]`.    |
 | `jwksPath`                | Maps it to the JWKS URL it loads.                                                   |
 | `responseKeyHeader`       | Name of the header carrying the response-key envelope (default `JWE-Response-Key`). |
@@ -28,6 +29,14 @@ The endpoint is public and unencrypted. The client reads these fields:
 | `excludedPaths`           | Effective exclude patterns (already include the jEAP defaults).                     |
 | `keyEncryptionAlgorithm`  | Informational — the client uses `RSA-OAEP-256` regardless.                          |
 | `contentEncryptionMethod` | Informational — the client uses `A256GCM` regardless.                               |
+
+A backend with JWE switched off keeps serving this endpoint and answers `200` with
+`{"enabled": false}`, empty path lists and no algorithms. That is the **only** signal the client
+accepts as "the backend has encryption off": a failed load stays a failure
+(`JWE_CONFIG_LOAD_FAILED`), because reading it as "off" would downgrade every request to plaintext on
+a mistyped path or a brief outage. An explicit local `enabled` wins over the published value — see
+[Configuration](./configuration.md#following-the-backend-switch). Publishing the disabled state
+requires backend starter 1.19.0 or newer.
 
 `includedPaths`/`excludedPaths` are Spring `PathPattern` strings (no HTTP method): a request is
 protected when its path matches an include and no exclude (includes first, excludes win). They — and

@@ -5,6 +5,25 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/), and this project adheres
 to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.3.0] - 2026-08-18
+
+### Added
+
+- The client now follows the backend's master switch: when `enabled` is not set locally, the
+  `enabled` field published by the backend's `/.well-known/jwe-configuration` decides. One frontend
+  build therefore runs against a stage with JWE turned on and a stage with it turned off. An explicit
+  local `enabled` still wins, so an application can pin the switch. Requires
+  `jeap-spring-boot-jwe-starter` 1.19.0 or newer, which keeps serving the metadata endpoint while
+  disabled; older backends answer `404` there and still need `enabled: false` configured locally.
+  A failed metadata load is deliberately *not* read as "encryption is off" — the client keeps failing
+  closed with `JWE_CONFIG_LOAD_FAILED`.
+
+### Changed
+
+- `JeapJweResolvedClientConfig.enabled` is now a required `boolean` (it carries the effective,
+  merged switch). This only affects code that constructs the resolved configuration itself; reading
+  it is unchanged.
+
 ## [1.2.0] - 2026-07-03
 
 ### Added

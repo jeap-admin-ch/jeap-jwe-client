@@ -58,6 +58,24 @@ It must not be:
 - logged,
 - exposed to application code.
 
+## Trusting the backend switch
+
+With `enabled` left unset the client follows the backend's published `enabled`
+([Configuration](./configuration.md#following-the-backend-switch)), so the metadata endpoint can turn
+encryption off. Two properties keep that safe:
+
+- **It adds no new trust.** The metadata is already the source of truth for *which* paths the client
+  encrypts, so anyone able to forge that response can publish empty `includedPaths` and disable
+  encryption for every path today. Both rest on the same assumption: the metadata is fetched over
+  HTTPS from the configured origin — which the client enforces, refusing a non-secure or cross-origin
+  configuration endpoint.
+- **Only an explicit `false` disables the client.** A failed load keeps failing closed with
+  `JWE_CONFIG_LOAD_FAILED` rather than falling back to plaintext, so a mistyped `jweConfigPath` or an
+  unreachable backend cannot silently downgrade requests.
+
+An application that must never send plaintext regardless of what the backend says pins `enabled: true`
+— an explicit local value wins over the published one.
+
 ## Transport content type
 
 Protected payloads use:

@@ -26,6 +26,7 @@ describe('JweKeySelector', () => {
       jwksUri: 'https://api.example.ch/.well-known/jwks.json',
       refreshIntervalSeconds: 300,
       config: {
+        enabled: true,
         origin: 'https://api.example.ch',
         loadBackendConfig: false,
         jwksUri: '/.well-known/jwks.json',

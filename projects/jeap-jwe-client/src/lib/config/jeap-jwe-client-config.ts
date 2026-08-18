@@ -1,7 +1,18 @@
 export interface JeapJweClientConfig {
   /**
    * Global switch.
-   * Defaults to true.
+   *
+   * Leave it unset to follow the backend: when backend configuration loading is
+   * enabled, the backend's published `enabled` (its `jeap.jwe.enabled` master
+   * switch) decides. That is what lets one frontend build run against a stage
+   * with JWE turned on and a stage with it turned off. An explicit value here
+   * always wins over the backend's, so an application that wants encryption
+   * enforced regardless can pin `true`.
+   *
+   * Defaults to true when neither this option nor the backend provides a value.
+   *
+   * Setting it to `false` short-circuits the interceptor before any backend
+   * configuration is loaded, so no metadata request is made at all.
    */
   enabled?: boolean;
 
@@ -107,6 +118,21 @@ export interface JeapJweClientConfigWithDefaults extends JeapJweClientConfig {
  */
 export interface JeapJweBackendConfigResponse {
   /**
+   * The backend's master switch (`jeap.jwe.enabled`). A backend that has JWE
+   * turned off keeps serving this endpoint and publishes `false` here, with
+   * empty path lists and no algorithms - that is the only signal the client
+   * accepts as "the backend has encryption off".
+   *
+   * A *failed* metadata load is deliberately not treated the same way: a
+   * mistyped `jweConfigPath` or an unreachable backend would then silently
+   * downgrade every request to plaintext. The client keeps failing closed with
+   * `JWE_CONFIG_LOAD_FAILED` instead. Backends older than the release that
+   * introduced this field answer 404 while disabled, so a frontend talking to
+   * one still has to set `enabled: false` locally.
+   */
+  enabled?: boolean;
+
+  /**
    * Content types the backend accepts as JWE payloads (the `cty` value).
    */
   contentTypeAllowlist?: string[];
@@ -156,6 +182,13 @@ export interface JeapJweBackendConfigResponse {
 }
 
 export interface JeapJweResolvedClientConfig extends JeapJweClientConfig {
+  /**
+   * Effective global switch after merging local and backend configuration: the
+   * local option when it is set, otherwise the backend's published `enabled`,
+   * otherwise `true`.
+   */
+  enabled: boolean;
+
   /**
    * Effective JWKS URI after merging local and backend configuration.
    */

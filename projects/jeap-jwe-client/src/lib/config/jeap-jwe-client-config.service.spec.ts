@@ -75,6 +75,85 @@ describe('JeapJweClientConfigService', () => {
     httpMock.expectNone(configUrl);
   });
 
+  describe('the enabled switch', () => {
+    it('follows the backend when the option is not set locally', async () => {
+      configure({ origin: sameOrigin });
+
+      const configPromise = firstValueFrom(service.getConfig());
+
+      httpMock.expectOne(configUrl).flush({
+        enabled: false,
+        contentTypeAllowlist: [],
+        includedPaths: [],
+        excludedPaths: [],
+      });
+
+      expect((await configPromise).enabled).toBeFalse();
+    });
+
+    it('stays enabled when the backend publishes enabled', async () => {
+      configure({ origin: sameOrigin });
+
+      const configPromise = firstValueFrom(service.getConfig());
+
+      httpMock.expectOne(configUrl).flush({ enabled: true });
+
+      expect((await configPromise).enabled).toBeTrue();
+    });
+
+    it('stays enabled when the backend does not publish the field at all', async () => {
+      // An older backend that does not know the field must not disable the client.
+      configure({ origin: sameOrigin });
+
+      const configPromise = firstValueFrom(service.getConfig());
+
+      httpMock.expectOne(configUrl).flush({});
+
+      expect((await configPromise).enabled).toBeTrue();
+    });
+
+    it('keeps an explicit local true over a disabled backend', async () => {
+      // An application that wants encryption enforced can pin the switch.
+      configure({ origin: sameOrigin, enabled: true });
+
+      const configPromise = firstValueFrom(service.getConfig());
+
+      httpMock.expectOne(configUrl).flush({ enabled: false });
+
+      expect((await configPromise).enabled).toBeTrue();
+    });
+
+    it('keeps an explicit local false over an enabled backend', async () => {
+      configure({ origin: sameOrigin, enabled: false });
+
+      const configPromise = firstValueFrom(service.getConfig());
+
+      httpMock.expectOne(configUrl).flush({ enabled: true });
+
+      expect((await configPromise).enabled).toBeFalse();
+    });
+
+    it('reports the local snapshot as enabled while the backend switch is unknown', () => {
+      // The snapshot is taken before the metadata is loaded, so it can only
+      // reflect the local option - the interceptor short-circuits on it only
+      // for an explicit local false.
+      configure({ origin: sameOrigin });
+
+      expect(service.getLocalConfigSnapshot().enabled).toBeTrue();
+    });
+
+    it('uses the local value when backend configuration loading is off', async () => {
+      configure({
+        origin: sameOrigin,
+        loadBackendConfig: false,
+        enabled: false,
+      });
+
+      expect((await firstValueFrom(service.getConfig())).enabled).toBeFalse();
+      httpMock.expectNone(configUrl);
+    });
+  });
+
   it('applies defaults when the backend metadata omits fields', async () => {
     configure({ origin: sameOrigin });
 
