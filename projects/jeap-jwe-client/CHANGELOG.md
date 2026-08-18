@@ -12,17 +12,11 @@ to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - The client now follows the backend's master switch: when `enabled` is not set locally, the
   `enabled` field published by the backend's `/.well-known/jwe-configuration` decides. One frontend
   build therefore runs against a stage with JWE turned on and a stage with it turned off. An explicit
-  local `enabled` still wins, so an application can pin the switch. Requires
-  `jeap-spring-boot-jwe-starter` 1.19.0 or newer, which keeps serving the metadata endpoint while
-  disabled; older backends answer `404` there and still need `enabled: false` configured locally.
-  A failed metadata load is deliberately *not* read as "encryption is off" — the client keeps failing
-  closed with `JWE_CONFIG_LOAD_FAILED`.
-
-### Changed
-
-- `JeapJweResolvedClientConfig.enabled` is now a required `boolean` (it carries the effective,
-  merged switch). This only affects code that constructs the resolved configuration itself; reading
-  it is unchanged.
+  local `enabled` still wins, so an application can pin the switch. Requires a
+  `jeap-spring-boot-jwe-starter` release that keeps serving the metadata endpoint while disabled (see
+  that project's changelog); older backends answer `404` there and still need `enabled: false`
+  configured locally. A failed metadata load is deliberately *not* read as "encryption is off" — the
+  client keeps failing closed with `JWE_CONFIG_LOAD_FAILED`.
 
 ## [1.2.0] - 2026-07-03
 

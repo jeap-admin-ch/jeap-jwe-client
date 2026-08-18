@@ -36,7 +36,8 @@ accepts as "the backend has encryption off": a failed load stays a failure
 (`JWE_CONFIG_LOAD_FAILED`), because reading it as "off" would downgrade every request to plaintext on
 a mistyped path or a brief outage. An explicit local `enabled` wins over the published value — see
 [Configuration](./configuration.md#following-the-backend-switch). Publishing the disabled state
-requires backend starter 1.19.0 or newer.
+requires a backend starter release that keeps serving the endpoint while disabled — see that
+project's changelog.
 
 `includedPaths`/`excludedPaths` are Spring `PathPattern` strings (no HTTP method): a request is
 protected when its path matches an include and no exclude (includes first, excludes win). They — and

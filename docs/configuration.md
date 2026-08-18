@@ -103,6 +103,9 @@ The backend still needs to provide the JWKS endpoint and support encrypted reque
 | `origin`             |                   the frontend's own origin | Backend origin; configure only for cross-origin backends                                |
 | `jweConfigPath`      | `<base path>/.well-known/jwe-configuration` | Backend JWE configuration endpoint; the base path is derived from the Angular base href |
 | `jwksPath`           |         `<base path>/.well-known/jwks.json` | JWKS endpoint used when backend config loading is disabled or does not override it      |
+| `loadBackendConfig`  |                                      `true` | Loads JWE configuration from the backend                                                |
+| `include`            |                                 `/*api*/**` | Include patterns used when the backend does not publish `includedPaths`                 |
+| `useDefaultExcludes` |                                      `true` | Adds default excludes for discovery and health endpoints                                |
 
 The base path is resolved the way Angular's `Location` resolves the base href: an `APP_BASE_HREF`
 provider wins over the `<base>` element. The base-path prefix applies only when the backend origin
@@ -111,9 +114,6 @@ backend's servlet context path). For an explicitly configured cross-origin backe
 and `jwksPath` default to the root well-known paths. The defaults are resolved identically whether
 the configuration is registered via `provideJeapJweClient()` or by providing
 `JEAP_JWE_CLIENT_CONFIG` directly.
-| `loadBackendConfig`  |                                      `true` | Loads JWE configuration from the backend                                                |
-| `include`            |                                 `/*api*/**` | Include patterns used when the backend does not publish `includedPaths`                 |
-| `useDefaultExcludes` |                                      `true` | Adds default excludes for discovery and health endpoints                                |
 
 ## `enabled`
 
@@ -144,7 +144,9 @@ provideJeapJweClient();
 ```
 
 An explicit local value always wins, so an application that wants encryption enforced regardless can
-pin it:
+pin it. Note what "enforced" means against a backend that has JWE off: the client keeps trying to
+protect every included request and each one fails, because a disabled backend serves no JWKS to
+encrypt with. That is the intended fail-closed behaviour, not a working configuration.
 
 | local `enabled` | backend `enabled` | effective |
 |-----------------|-------------------|-----------|
@@ -159,10 +161,10 @@ Two limits worth knowing:
   *not* read as "encryption is off" — the client keeps failing closed with `JWE_CONFIG_LOAD_FAILED`,
   because a mistyped `jweConfigPath` or a brief outage would otherwise silently downgrade every
   request to plaintext.
-- **The backend must publish the field.** It requires `jeap-spring-boot-jwe-starter` 1.19.0 or newer;
-  older backends answer the metadata endpoint with `404` while disabled, so a frontend talking to one
-  still has to set `enabled: false` locally. The same applies with `loadBackendConfig: false`, where
-  the backend's switch is never read.
+- **The backend must publish the field.** It requires a `jeap-spring-boot-jwe-starter` release that
+  keeps serving the metadata endpoint while disabled (see that project's changelog); older backends
+  answer it with `404` while disabled, so a frontend talking to one still has to set `enabled: false`
+  locally. The same applies with `loadBackendConfig: false`, where the backend's switch is never read.
 
 ## `origin`
 
