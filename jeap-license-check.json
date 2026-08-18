@@ -1,0 +1,12 @@
+{
+  "exceptions": {
+    "rollup-plugin-dts@*": {
+      "reason": "LGPL-3.0-only. A build-time only transitive dependency of ng-packagr that is never redistributed with the library. See https://github.com/Swatinem/rollup-plugin-dts"
+    }
+  },
+  "notices": {
+    "out": "projects/jeap-jwe-client/THIRD-PARTY-LICENSES.md",
+    "production": true,
+    "texts": "folder"
+  }
+}

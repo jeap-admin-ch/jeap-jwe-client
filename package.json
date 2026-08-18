@@ -10,6 +10,8 @@
     "lint": "eslint \"projects/jeap-jwe-client/src/**/*.ts\"",
     "format": "prettier --write \"projects/jeap-jwe-client/src/**/*.ts\"",
     "format:check": "prettier --check \"projects/jeap-jwe-client/src/**/*.ts\"",
+    "check-licenses": "jeap-frontend-license-checker",
+    "notices": "jeap-frontend-license-checker notices",
     "pack:lib": "cd dist/jeap-jwe-client && npm pack",
     "publish:lib:dry-run": "cd dist/jeap-jwe-client && npm publish --dry-run --access public",
     "publish:lib": "cd dist/jeap-jwe-client && npm publish --access public"
@@ -31,6 +33,7 @@
     "@angular-devkit/build-angular": "22.0.2",
     "@angular/cli": "22.0.2",
     "@angular/compiler-cli": "22.0.2",
+    "@jeap/jeap-frontend-license-checker": "^1.0.1",
     "@types/jasmine": "~6.0.0",
     "eslint": "^10.5.0",
     "jasmine-core": "~6.2.0",
