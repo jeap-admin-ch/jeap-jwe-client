@@ -43,6 +43,9 @@ jobs:
       - name: Lint
         run: npm run lint
 
+      - name: Check dependency licenses
+        run: npm run check-licenses
+
   license:
     name: Update third-party licenses
     runs-on: ubuntu-latest
@@ -63,24 +66,23 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
-      - name: Generate THIRD-PARTY-LICENSES.md
-        run: |
-          npx --yes license-checker-rseidelsohn \
-            --markdown \
-            --out "${LIBRARY_ROOT}/THIRD-PARTY-LICENSES.md"
+      - name: Generate the third-party notices
+        run: npm run notices
 
-      - name: Update or verify THIRD-PARTY-LICENSES.md
+      - name: Update or verify the third-party notices
         run: |
-          if [ -z "$(git status --porcelain -- "${LIBRARY_ROOT}/THIRD-PARTY-LICENSES.md")" ]; then
-            echo "THIRD-PARTY-LICENSES.md is already up to date."
+          NOTICES="${LIBRARY_ROOT}/THIRD-PARTY-LICENSES.md ${LIBRARY_ROOT}/third-party-licenses"
+
+          if [ -z "$(git status --porcelain -- ${NOTICES})" ]; then
+            echo "The third-party notices are already up to date."
             exit 0
           fi
 
           # On main, never write to the branch: fail and require the update via a pull request.
           if [ "${{ github.ref }}" = "refs/heads/main" ]; then
-            echo "THIRD-PARTY-LICENSES.md is out of date on main."
-            echo "Regenerate it on a branch and merge it via pull request:"
-            echo "npx --yes license-checker-rseidelsohn --markdown --out ${LIBRARY_ROOT}/THIRD-PARTY-LICENSES.md"
+            echo "The third-party notices are out of date on main."
+            echo "Regenerate them on a branch and merge them via pull request:"
+            echo "npm run notices"
             exit 1
           fi
 
@@ -91,11 +93,11 @@ jobs:
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
 
-          git add "${LIBRARY_ROOT}/THIRD-PARTY-LICENSES.md"
+          git add -A -- ${NOTICES}
           git commit -m "Update third-party licenses"
           git push
 
-          echo "THIRD-PARTY-LICENSES.md was out of date; regenerated it and pushed a new commit."
+          echo "The third-party notices were out of date; regenerated them and pushed a new commit."
           echo "Failing this run on purpose so the build is not completed against stale licenses."
           echo "Re-run the workflow (or push again) to build the updated commit."
           exit 1
@@ -228,6 +230,7 @@ jobs:
           test -f "${LIBRARY_DIST}/LICENSE"
           test -f "${LIBRARY_DIST}/CHANGELOG.md"
           test -f "${LIBRARY_DIST}/THIRD-PARTY-LICENSES.md"
+          test -d "${LIBRARY_DIST}/third-party-licenses"
           node -e "const p=require('./${LIBRARY_DIST}/package.json'); if (!p.name || !p.version) throw new Error('Missing package name or version'); if (p.private === true) throw new Error('Library package must not be private'); console.log(p.name + '@' + p.version)"
 
       - name: Create npm package tarball
@@ -313,13 +316,15 @@ jobs:
         if: steps.guard.outputs.release == 'true'
         run: npm ci
 
-      - name: Verify THIRD-PARTY-LICENSES.md is up to date
+      - name: Verify the third-party notices are up to date
         if: steps.guard.outputs.release == 'true'
         run: |
-          npx --yes license-checker-rseidelsohn \
-            --markdown \
-            --out THIRD-PARTY-LICENSES.generated.md
-          diff -u "${LIBRARY_ROOT}/THIRD-PARTY-LICENSES.md" THIRD-PARTY-LICENSES.generated.md
+          # Generated next to the committed file so the relative links to the license
+          # texts, and the regenerated texts themselves, land in the same place.
+          npm run notices -- --out "${LIBRARY_ROOT}/THIRD-PARTY-LICENSES.generated.md"
+          diff -u "${LIBRARY_ROOT}/THIRD-PARTY-LICENSES.md" "${LIBRARY_ROOT}/THIRD-PARTY-LICENSES.generated.md"
+          rm -f "${LIBRARY_ROOT}/THIRD-PARTY-LICENSES.generated.md"
+          git diff --exit-code -- "${LIBRARY_ROOT}/third-party-licenses"
 
       - name: Build library
         if: steps.guard.outputs.release == 'true'
@@ -337,6 +342,7 @@ jobs:
           test -f "${LIBRARY_DIST}/LICENSE"
           test -f "${LIBRARY_DIST}/CHANGELOG.md"
           test -f "${LIBRARY_DIST}/THIRD-PARTY-LICENSES.md"
+          test -d "${LIBRARY_DIST}/third-party-licenses"
           node -e "const p=require('./${LIBRARY_DIST}/package.json'); if (!p.name || !p.version) throw new Error('Missing package name or version'); if (p.private === true) throw new Error('Library package must not be private'); console.log(p.name + '@' + p.version)"
 
       - name: Publish to npm (token bootstrap)

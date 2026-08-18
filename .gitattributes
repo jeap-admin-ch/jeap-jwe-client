@@ -1,0 +1,4 @@
+# The third-party license texts are copied verbatim from the dependencies. Git must not
+# rewrite their line endings: the checker recreates them byte for byte from node_modules,
+# so a normalised copy would show up as a change on every CI run.
+projects/jeap-jwe-client/third-party-licenses/** -text
