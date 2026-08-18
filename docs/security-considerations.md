@@ -74,7 +74,9 @@ encryption off. Two properties keep that safe:
   unreachable backend cannot silently downgrade requests.
 
 An application that must never send plaintext regardless of what the backend says pins `enabled: true`
-— an explicit local value wins over the published one.
+— an explicit local value wins over the published one. Against a backend that actually has JWE off,
+that makes every included request fail rather than succeed unencrypted: there is no JWKS to encrypt
+with. Fail-closed is the point, but it is not a configuration the two sides can run in.
 
 ## Transport content type
 
