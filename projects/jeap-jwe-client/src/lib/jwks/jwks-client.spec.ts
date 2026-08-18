@@ -14,6 +14,7 @@ describe('JwksClient', () => {
   let httpMock: HttpTestingController;
 
   const config: JeapJweResolvedClientConfig = {
+    enabled: true,
     origin: 'https://api.example.ch',
     loadBackendConfig: false,
     jwksUri: '/.well-known/jwks.json',

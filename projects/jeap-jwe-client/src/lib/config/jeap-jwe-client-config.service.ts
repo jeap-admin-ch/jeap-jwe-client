@@ -64,11 +64,16 @@ export class JeapJweClientConfigService {
   /**
    * Returns the local configuration resolved with defaults.
    *
-   * The interceptor uses this snapshot only for the enabled flag and the
-   * configured backend origin; it is also the effective configuration when
-   * `loadBackendConfig` is `false`. Include and exclude decisions before the
-   * backend configuration is available are made against
+   * The interceptor uses this snapshot only for an explicitly disabled client
+   * and the configured backend origin; it is also the effective configuration
+   * when `loadBackendConfig` is `false`. Include and exclude decisions before
+   * the backend configuration is available are made against
    * {@link getStableExclusionPatterns} instead.
+   *
+   * Note that `enabled` is `true` here whenever it is not set locally, even if
+   * the backend publishes `false`: only {@link getConfig} knows the backend's
+   * switch. The interceptor therefore short-circuits on this snapshot only for
+   * an explicit local `false`.
    */
   getLocalConfigSnapshot(): JeapJweResolvedClientConfig {
     return this.resolveConfig(undefined);
@@ -163,6 +168,14 @@ export class JeapJweClientConfigService {
   ): JeapJweResolvedClientConfig {
     return {
       ...this.localConfig,
+      /**
+       * The local option wins when it is set, so an application can pin the
+       * switch; otherwise the backend's `jeap.jwe.enabled` decides, which is
+       * what lets one frontend build follow a stage that has JWE turned off.
+       * A backend that does not publish the field at all (no metadata loaded,
+       * or an older backend) leaves the client enabled.
+       */
+      enabled: this.localConfig.enabled ?? backendConfig?.enabled ?? true,
       jwksUri: backendConfig?.jwksPath ?? this.localConfig.jwksPath,
       refreshIntervalSeconds: DEFAULT_REFRESH_INTERVAL_SECONDS,
       include: resolveIncludedPaths(this.localConfig, backendConfig),

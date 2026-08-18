@@ -52,6 +52,7 @@ describe('JweEndpointMatcher', () => {
   ): JeapJweResolvedClientConfig {
     return {
       ...config,
+      enabled: config.enabled ?? true,
       jwksUri: '/.well-known/jwks.json',
       refreshIntervalSeconds: 300,
       include: resolveIncludedPaths(config),

@@ -175,7 +175,9 @@ flowchart TD
   A[Angular HttpClient request] --> B[Check whether the request matches the configured origin]
   B --> C[Check whether the path matches an include and no exclude]
   C --> D[Load backend JWE configuration, if enabled]
-  D --> E[Load JWKS]
+  D --> D2{Backend publishes enabled false?}
+  D2 -- yes --> Z[Send the request unchanged]
+  D2 -- no --> E[Load JWKS]
   E --> F[Select an encryption key]
   F --> G[Create a request-local response CEK]
   G --> H[Encrypt the JWE-Response-Key]

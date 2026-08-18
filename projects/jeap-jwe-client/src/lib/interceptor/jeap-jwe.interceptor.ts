@@ -32,10 +32,10 @@ export const jeapJweInterceptor: HttpInterceptorFn = (request, next) => {
 
   /**
    * Only decisions that cannot change once the backend configuration arrives
-   * are made locally: a disabled client, a request to another origin, the
-   * local exclude patterns (always part of the effective exclude list), and
-   * the discovery endpoints (the JWE configuration and JWKS paths, exempt
-   * from JWE protection by construction).
+   * are made locally: an explicitly disabled client, a request to another
+   * origin, the local exclude patterns (always part of the effective exclude
+   * list), and the discovery endpoints (the JWE configuration and JWKS paths,
+   * exempt from JWE protection by construction).
    *
    * Include decisions and the client default excludes are deliberately NOT
    * decided locally: the backend-published patterns are authoritative and
@@ -46,6 +46,12 @@ export const jeapJweInterceptor: HttpInterceptorFn = (request, next) => {
    */
   const localConfig = configService.getLocalConfigSnapshot();
 
+  /**
+   * Only an explicit local `enabled: false` short-circuits here, sparing the
+   * metadata request entirely. A client that leaves the option unset follows
+   * the backend's switch, which is only known once the configuration has been
+   * loaded - the matcher applies it below.
+   */
   if (localConfig.enabled === false) {
     return next(request);
   }

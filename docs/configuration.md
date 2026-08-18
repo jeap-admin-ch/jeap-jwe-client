@@ -99,7 +99,7 @@ The backend still needs to provide the JWKS endpoint and support encrypted reque
 
 | Option               |                                     Default | Description                                                                             |
 |----------------------|--------------------------------------------:|-----------------------------------------------------------------------------------------|
-| `enabled`            |                                      `true` | Enables or disables JWE protection globally                                             |
+| `enabled`            |            the backend's published `enabled` | Enables or disables JWE protection globally; unset means "follow the backend"            |
 | `origin`             |                   the frontend's own origin | Backend origin; configure only for cross-origin backends                                |
 | `jweConfigPath`      | `<base path>/.well-known/jwe-configuration` | Backend JWE configuration endpoint; the base path is derived from the Angular base href |
 | `jwksPath`           |         `<base path>/.well-known/jwks.json` | JWKS endpoint used when backend config loading is disabled or does not override it      |
@@ -129,6 +129,40 @@ provideJeapJweClient({
 When disabled, requests are forwarded unchanged.
 
 This can be useful for local development, feature toggles, or staged rollouts.
+
+### Following the backend switch
+
+**Leave the option unset and the client follows the backend.** The jEAP backend publishes its master
+switch `jeap.jwe.enabled` as `enabled` in its protocol metadata, and keeps answering the metadata
+endpoint even while it is turned off. So the same frontend build runs against a stage with
+encryption on and a stage with it off — which is what makes deployment parity workable, since JWE can
+be switched off per stage on the backend without a matching frontend build.
+
+```ts
+// Follows the backend: protected where the backend has JWE on, plaintext where it has it off.
+provideJeapJweClient();
+```
+
+An explicit local value always wins, so an application that wants encryption enforced regardless can
+pin it:
+
+| local `enabled` | backend `enabled` | effective |
+|-----------------|-------------------|-----------|
+| unset           | `true` or absent  | on        |
+| unset           | `false`           | **off**   |
+| `true`          | anything          | on        |
+| `false`         | anything          | off — the interceptor short-circuits, so no metadata request is made at all |
+
+Two limits worth knowing:
+
+- **Only an explicit `false` disables the client.** A failed metadata load (404, connection error) is
+  *not* read as "encryption is off" — the client keeps failing closed with `JWE_CONFIG_LOAD_FAILED`,
+  because a mistyped `jweConfigPath` or a brief outage would otherwise silently downgrade every
+  request to plaintext.
+- **The backend must publish the field.** It requires `jeap-spring-boot-jwe-starter` 1.19.0 or newer;
+  older backends answer the metadata endpoint with `404` while disabled, so a frontend talking to one
+  still has to set `enabled: false` locally. The same applies with `loadBackendConfig: false`, where
+  the backend's switch is never read.
 
 ## `origin`
 

@@ -170,7 +170,8 @@ origin root and only appends the local `exclude` patterns on top.
 
 Important protocol rules:
 
-- Backend config endpoint: `/.well-known/jwe-configuration`
+- Backend config endpoint: `/.well-known/jwe-configuration` (answered by the backend in both
+  states; a disabled backend publishes `enabled: false` with empty path lists)
 - Default JWKS endpoint: `/.well-known/jwks.json`
 - Protected request media type: `application/jose`
 - Response key header: `JWE-Response-Key`
@@ -190,7 +191,9 @@ The local Angular configuration uses `JeapJweClientConfig`.
 Key behavior:
 
 - `origin` is required.
-- `enabled` defaults to `true`.
+- `enabled` follows the backend's published `enabled` when it is not set locally, and defaults to
+  `true` when neither provides a value. An explicit local value wins. Only an explicit backend
+  `false` disables the client - a failed metadata load keeps failing closed.
 - `loadBackendConfig` defaults to `true`.
 - `jweConfigPath` defaults to `/.well-known/jwe-configuration`.
 - `jwksPath` defaults to `/.well-known/jwks.json`.

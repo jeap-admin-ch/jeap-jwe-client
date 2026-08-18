@@ -29,7 +29,12 @@ export class JweEndpointMatcher {
       this.fallbackConfig
     )
   ): JeapJweEndpointMatch | null {
-    if (config.enabled === false) {
+    /**
+     * The effective switch: the local option when set, otherwise the backend's
+     * published `enabled`. A backend that has JWE turned off therefore turns
+     * the client off here, and the request goes out unencrypted.
+     */
+    if (!config.enabled) {
       return null;
     }
 
@@ -213,6 +218,7 @@ export class JweEndpointMatcher {
   ): JeapJweResolvedClientConfig {
     return {
       ...config,
+      enabled: config.enabled ?? true,
       jwksUri: config.jwksPath ?? DEFAULT_JWKS_PATH,
       refreshIntervalSeconds: DEFAULT_REFRESH_INTERVAL_SECONDS,
       include: resolveIncludedPaths(config),
