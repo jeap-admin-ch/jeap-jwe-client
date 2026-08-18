@@ -5,6 +5,16 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/), and this project adheres
 to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.3.1] - 2026-08-18
+
+### Changed
+
+- The third-party notices list the dependencies that are redistributed with the library
+  instead of the whole development toolchain, and carry their license texts as files under
+  `third-party-licenses/`, packaged into the npm tarball alongside the notice file.
+- The dependency licenses are checked against a policy on every build. They were only ever
+  listed before, so nothing verified that they were acceptable.
+
 ## [1.3.0] - 2026-08-18
 
 ### Added
