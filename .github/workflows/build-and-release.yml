@@ -236,9 +236,19 @@ jobs:
         working-directory: ${{ env.LIBRARY_DIST }}
         run: npm pack
 
+      # npm refuses to dry-run a version that is already on the registry, so after a
+      # release every further push to main would fail here until the next version bump.
+      # The record tag is the same signal the release job uses to decide that.
       - name: Publish dry run
-        working-directory: ${{ env.LIBRARY_DIST }}
-        run: npm publish --dry-run --access public
+        run: |
+          set -euo pipefail
+          TAG="v$(node -p "require('./${LIBRARY_DIST}/package.json').version")"
+          if git ls-remote --exit-code --tags origin "refs/tags/${TAG}" >/dev/null 2>&1; then
+            echo "${TAG} is already released; a published version cannot be published again. Skipping the dry run."
+            exit 0
+          fi
+          cd "${LIBRARY_DIST}"
+          npm publish --dry-run --access public
 
       - name: Upload library dist artifact
         uses: actions/upload-artifact@v7

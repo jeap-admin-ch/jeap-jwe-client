@@ -50,6 +50,8 @@ jobs:
         with:
           ref: ${{ github.event.pull_request.head.ref || github.ref_name }}
           token: ${{ steps.app-token.outputs.token }}
+          # The release tags decide which versions are already taken, see the next step.
+          fetch-depth: 0
 
       - name: Setup Node.js
         uses: actions/setup-node@v7
@@ -57,20 +59,56 @@ jobs:
           node-version: ${{ env.NODE_VERSION }}
           cache: npm
 
-      - name: Check if version already bumped
+      # Which version to release cannot be answered from this branch alone. Two
+      # Dependabot pull requests are cut from the same base and would otherwise both
+      # bump to the same number; whichever merges second then carries a version that is
+      # already on npm, and the build fails at "cannot publish over the previously
+      # published versions". The target is therefore derived from the base branch and
+      # from the release tags, not from this branch's own copy of the version.
+      - name: Determine the version to release
         id: check
-        if: github.event_name == 'pull_request_target'
         run: |
           set -euo pipefail
-          BASE_REF="${{ github.event.pull_request.base.ref }}"
+          BASE_REF="${{ github.event.pull_request.base.ref || github.event.repository.default_branch }}"
           git fetch --depth=1 origin "$BASE_REF"
           BASE_VERSION=$(git show "origin/${BASE_REF}:${LIBRARY_ROOT}/package.json" | node -p "JSON.parse(require('node:fs').readFileSync(0, 'utf8')).version")
           CURRENT_VERSION=$(node -p "require('./${LIBRARY_ROOT}/package.json').version")
-          if [ "$BASE_VERSION" != "$CURRENT_VERSION" ]; then
-            echo "Version already bumped ahead of $BASE_REF ($CURRENT_VERSION vs $BASE_VERSION), skipping."
+          RELEASED=$(git tag --list 'v*' | sed 's/^v//' | tr '\n' ' ')
+
+          DECISION=$(node -e '
+            const [base, current, releasedRaw] = process.argv.slice(1);
+            const released = new Set(releasedRaw.split(/\s+/).filter(Boolean));
+            const parse = value => value.split(".").map(Number);
+            const compare = (a, b) => {
+              const [x, y] = [parse(a), parse(b)];
+              for (let index = 0; index < 3; index += 1) {
+                if (x[index] !== y[index]) return x[index] - y[index];
+              }
+              return 0;
+            };
+            // A bump this workflow already made, and that nothing has released in the
+            // meantime, is left alone: re-running must not keep raising the version.
+            if (compare(current, base) > 0 && !released.has(current)) {
+              console.log(`skip ${current}`);
+            } else {
+              const [major, minor, patch] = parse(compare(current, base) > 0 ? current : base);
+              let candidate = patch;
+              let next;
+              do {
+                candidate += 1;
+                next = `${major}.${minor}.${candidate}`;
+              } while (released.has(next));
+              console.log(`bump ${next}`);
+            }
+          ' "$BASE_VERSION" "$CURRENT_VERSION" "$RELEASED")
+
+          echo "base=$BASE_VERSION current=$CURRENT_VERSION decision=$DECISION"
+          if [ "${DECISION%% *}" = "skip" ]; then
+            echo "Version ${CURRENT_VERSION} is already bumped ahead of ${BASE_REF} and unreleased, nothing to do."
             echo "skip=true" >> "$GITHUB_OUTPUT"
           else
             echo "skip=false" >> "$GITHUB_OUTPUT"
+            echo "target=${DECISION##* }" >> "$GITHUB_OUTPUT"
           fi
 
       - name: Bump patch version
@@ -79,7 +117,8 @@ jobs:
         run: |
           set -euo pipefail
           # A dependency update carries no API change, so patch is the honest semver step.
-          NEW=$(cd "${LIBRARY_ROOT}" && npm version patch --no-git-tag-version | tr -d 'v')
+          NEW="${{ steps.check.outputs.target }}"
+          (cd "${LIBRARY_ROOT}" && npm version "$NEW" --no-git-tag-version --allow-same-version >/dev/null)
           TODAY=$(date +%Y-%m-%d)
           echo "new=$NEW" >> "$GITHUB_OUTPUT"
           echo "today=$TODAY" >> "$GITHUB_OUTPUT"
