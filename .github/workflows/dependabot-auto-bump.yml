@@ -1,0 +1,115 @@
+name: Dependabot auto version bump
+
+on:
+  # pull_request_target instead of pull_request: Dependabot-triggered pull_request
+  # runs only receive Dependabot secrets, so BOT_APP_ID/BOT_APP_PRIVATE_KEY would
+  # be empty. pull_request_target runs in the base-repo context with Actions
+  # secrets; the job below is gated to Dependabot PRs from this repository.
+  # synchronize/reopened: Dependabot force-pushes an updated branch onto an
+  # already-open PR (e.g. a grouped update gets superseded before merge), which
+  # otherwise merges without a version bump since "opened" alone doesn't cover it.
+  pull_request_target:
+    types: [opened, synchronize, reopened]
+  workflow_dispatch:
+
+concurrency:
+  group: dependabot-bump-${{ github.event.pull_request.number || github.run_id }}
+  cancel-in-progress: true
+
+permissions:
+  contents: write
+  pull-requests: write
+
+env:
+  NODE_VERSION: '24.16.0'
+  LIBRARY_ROOT: projects/jeap-jwe-client
+
+jobs:
+  bump:
+    # The commit step below pushes with the GitHub App token, so the resulting
+    # synchronize event is attributed to the app's own bot actor, not
+    # dependabot[bot] - this condition already prevents that push from
+    # retriggering this workflow, so no separate loop-guard is needed.
+    if: github.event_name == 'workflow_dispatch' || (github.actor == 'dependabot[bot]' && github.event.pull_request.head.repo.full_name == github.repository)
+    runs-on: ubuntu-latest
+    steps:
+      - name: Generate App token
+        id: app-token
+        uses: actions/create-github-app-token@v3
+        with:
+          app-id: ${{ secrets.BOT_APP_ID }}
+          private-key: ${{ secrets.BOT_APP_PRIVATE_KEY }}
+
+      - name: Checkout PR branch
+        uses: actions/checkout@v5
+        with:
+          ref: ${{ github.event.pull_request.head.ref || github.ref_name }}
+          token: ${{ steps.app-token.outputs.token }}
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v5
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+
+      - name: Check if version already bumped
+        id: check
+        if: github.event_name == 'pull_request_target'
+        run: |
+          set -euo pipefail
+          BASE_REF="${{ github.event.pull_request.base.ref }}"
+          git fetch --depth=1 origin "$BASE_REF"
+          BASE_VERSION=$(git show "origin/${BASE_REF}:${LIBRARY_ROOT}/package.json" | node -p "JSON.parse(require('node:fs').readFileSync(0, 'utf8')).version")
+          CURRENT_VERSION=$(node -p "require('./${LIBRARY_ROOT}/package.json').version")
+          if [ "$BASE_VERSION" != "$CURRENT_VERSION" ]; then
+            echo "Version already bumped ahead of $BASE_REF ($CURRENT_VERSION vs $BASE_VERSION), skipping."
+            echo "skip=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "skip=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Bump patch version
+        id: bump
+        if: steps.check.outputs.skip != 'true'
+        run: |
+          set -euo pipefail
+          # A dependency update carries no API change, so patch is the honest semver step.
+          NEW=$(cd "${LIBRARY_ROOT}" && npm version patch --no-git-tag-version | tr -d 'v')
+          TODAY=$(date +%Y-%m-%d)
+          echo "new=$NEW" >> "$GITHUB_OUTPUT"
+          echo "today=$TODAY" >> "$GITHUB_OUTPUT"
+
+          sed -i "s/^softwareVersion: .*/softwareVersion: ${NEW}/" publiccode.yml
+          sed -i "s/^releaseDate: .*/releaseDate: ${TODAY}/" publiccode.yml
+
+          awk -v ver="$NEW" -v date="$TODAY" '
+            BEGIN { inserted = 0 }
+            /^## \[/ && !inserted {
+              print "## [" ver "] - " date "\n\n### Changed\n\n- Updated dependencies.\n"
+              inserted = 1
+            }
+            { print }
+          ' "${LIBRARY_ROOT}/CHANGELOG.md" > CHANGELOG.md.new && mv CHANGELOG.md.new "${LIBRARY_ROOT}/CHANGELOG.md"
+
+      - name: Regenerate THIRD-PARTY-LICENSES.md
+        if: steps.check.outputs.skip != 'true'
+        run: |
+          npm ci
+          npm run notices
+
+      - name: Commit and push
+        if: steps.check.outputs.skip != 'true'
+        run: |
+          set -euo pipefail
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add "${LIBRARY_ROOT}/package.json" publiccode.yml \
+            "${LIBRARY_ROOT}/CHANGELOG.md" "${LIBRARY_ROOT}/THIRD-PARTY-LICENSES.md"
+          BRANCH="${{ github.event.pull_request.head.ref || github.ref_name }}"
+          if [ -n "$(git status --porcelain)" ]; then
+            git commit -m "Bump version to ${{ steps.bump.outputs.new }}"
+            # The license job of build-and-release.yml may have pushed regenerated
+            # notices onto the same branch while this ran; rebase instead of failing.
+            git pull --rebase origin "$BRANCH"
+            git push origin "HEAD:$BRANCH"
+          fi

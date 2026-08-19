@@ -120,6 +120,24 @@ Once the package exists on npm:
 From now on the workflow's OIDC publish step runs and **no long-lived npm token is
 stored in CI**, satisfying the project's security requirement.
 
+## Step 5 — Add the App credentials for the Dependabot bump
+
+`.github/workflows/dependabot-auto-bump.yml` turns each Dependabot pull request into a
+releasable patch version. It needs a GitHub App token, because a push made with the
+default `GITHUB_TOKEN` does not trigger a new workflow run and the bumped commit would
+never be built before the merge.
+
+1. Use the organisation's `jeap-workflows` App (the same one
+   `jeap-python-pipeline-lib` uses).
+2. Add two **repository** secrets under Settings → Secrets and variables → Actions:
+   - **`BOT_APP_ID`** — the App's numeric id
+   - **`BOT_APP_PRIVATE_KEY`** — a private key generated for that App, in PEM form
+3. Make sure the App is installed on this repository with write access to contents and
+   pull requests.
+
+Until both secrets exist, Dependabot still opens its weekly pull requests; they simply
+arrive without a version bump and have to be completed by hand.
+
 ## Steady-state releases
 
 For every subsequent release:
@@ -130,6 +148,9 @@ For every subsequent release:
 3. Merge the version bump to `main`.
 4. The `release` job builds, verifies, publishes via OIDC trusted publishing, and
    pushes the `vX.Y.Z` record tag.
+
+For dependency updates, steps 1 and 2 are done for you on the Dependabot branch — see
+[publishing and versioning](./publishing-and-versioning.md).
 
 ## Notes and caveats
 

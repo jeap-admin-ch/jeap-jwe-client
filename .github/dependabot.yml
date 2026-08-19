@@ -1,0 +1,37 @@
+version: 2
+updates:
+  # The workspace root: the build, test and lint toolchain, and the lock file the
+  # compatibility matrix installs from.
+  - package-ecosystem: "npm"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+    open-pull-requests-limit: 5
+    groups:
+      npm-dependencies:
+        patterns:
+          - "*"
+
+  # The published library manifest. The workspace root is not an npm workspace, so an
+  # update of "/" never reaches this file, and the dependencies declared here are the
+  # only third-party code that is redistributed to consumers. Peer dependencies are not
+  # touched by Dependabot, so the supported Angular range stays a deliberate decision.
+  - package-ecosystem: "npm"
+    directory: "/projects/jeap-jwe-client"
+    schedule:
+      interval: "weekly"
+    open-pull-requests-limit: 5
+    groups:
+      library-dependencies:
+        patterns:
+          - "*"
+
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+    open-pull-requests-limit: 5
+    groups:
+      github-actions:
+        patterns:
+          - "*"

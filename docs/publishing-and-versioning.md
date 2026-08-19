@@ -124,6 +124,26 @@ Releases are **driven by the library version** and run from the single
 In short: **merging a version bump to `main` releases that version.** The tag is a
 record/idempotency marker, not a trigger, so no PAT is involved.
 
+### Dependency updates release themselves
+
+Dependabot opens one grouped pull request per week for the workspace toolchain, for the
+library's own dependencies, and for the pinned GitHub Actions
+(`.github/dependabot.yml`). Each of those pull requests is completed automatically by
+`.github/workflows/dependabot-auto-bump.yml`, which performs step 1 of the flow above on
+the bot's behalf: it bumps the **patch** version, syncs `publiccode.yml`, adds an
+`Updated dependencies.` changelog entry and regenerates `THIRD-PARTY-LICENSES.md`.
+
+Merging such a pull request therefore publishes that patch release. Reviewing one means
+reviewing the dependency change itself; the version bookkeeping is already done. A bump
+that is already on the branch is detected and not repeated, so re-runs and Dependabot
+force-pushes stay idempotent.
+
+The workflow pushes with a GitHub App token (`BOT_APP_ID` / `BOT_APP_PRIVATE_KEY`, see
+[npm publishing setup](./npm-publishing-setup.md)) rather than the default `GITHUB_TOKEN`,
+because a push made with the default token does not start a new workflow run — the bumped
+commit would never be built, tested against the compatibility matrix or packaged before
+the merge.
+
 The one-time maintainer setup that makes publishing work (npm org, the `release`
 environment, the first bootstrap release, and configuring the trusted publisher) is
 documented in [npm publishing setup](./npm-publishing-setup.md).
