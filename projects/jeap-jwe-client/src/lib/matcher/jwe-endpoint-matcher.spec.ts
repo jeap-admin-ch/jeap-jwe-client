@@ -14,13 +14,7 @@ import { JEAP_JWE_RESPONSE_KEY_HEADER } from '../crypto/jwe-algorithms';
 import { JweEndpointMatcher } from './jwe-endpoint-matcher';
 
 type HttpMethod =
-  | 'GET'
-  | 'HEAD'
-  | 'POST'
-  | 'PUT'
-  | 'PATCH'
-  | 'DELETE'
-  | 'OPTIONS';
+  'GET' | 'HEAD' | 'POST' | 'PUT' | 'PATCH' | 'DELETE' | 'OPTIONS';
 
 describe('JweEndpointMatcher', () => {
   const sameOrigin = globalThis.location.origin;
