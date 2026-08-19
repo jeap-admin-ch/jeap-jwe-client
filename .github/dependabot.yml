@@ -11,6 +11,20 @@ updates:
       npm-dependencies:
         patterns:
           - "*"
+    # Two packages are pinned by peer dependencies of the toolchain, not by choice.
+    # Proposing them produces a group that cannot even be installed, which takes the
+    # other updates in the group down with it. Revisit both when Angular is upgraded.
+    ignore:
+      # @angular-devkit/build-angular 22 requires typescript ">=6.0 <6.1", so even a
+      # minor update is out of reach until Angular 23.
+      - dependency-name: "typescript"
+        update-types:
+          - "version-update:semver-major"
+          - "version-update:semver-minor"
+      # karma-jasmine-html-reporter 2.2 requires jasmine-core "^4 || ^5 || ^6".
+      - dependency-name: "jasmine-core"
+        update-types:
+          - "version-update:semver-major"
 
   # The published library manifest. The workspace root is not an npm workspace, so an
   # update of "/" never reaches this file, and the dependencies declared here are the
