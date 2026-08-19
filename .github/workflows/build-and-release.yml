@@ -144,11 +144,15 @@ jobs:
           ANGULAR_VERSION="$(latest_patch '@angular/core')"
           ANGULAR_CLI_VERSION="$(latest_patch '@angular/cli')"
           ANGULAR_BUILD_VERSION="$(latest_patch '@angular-devkit/build-angular')"
+          # @angular/build carries the karma builder angular.json names and peers the
+          # framework, so it has to follow the major under test like the rest.
+          NG_BUILD_VERSION="$(latest_patch '@angular/build')"
           NG_PACKAGR_VERSION="$(latest_patch 'ng-packagr')"
 
           echo "Angular framework version: ${ANGULAR_VERSION}"
           echo "Angular CLI version: ${ANGULAR_CLI_VERSION}"
           echo "Angular build-angular version: ${ANGULAR_BUILD_VERSION}"
+          echo "Angular build version: ${NG_BUILD_VERSION}"
           echo "ng-packagr version: ${NG_PACKAGR_VERSION}"
           echo "TypeScript version: ${{ matrix.typescript-version }}"
 
@@ -162,6 +166,7 @@ jobs:
             @angular/compiler-cli@"${ANGULAR_VERSION}" \
             @angular/cli@"${ANGULAR_CLI_VERSION}" \
             @angular-devkit/build-angular@"${ANGULAR_BUILD_VERSION}" \
+            @angular/build@"${NG_BUILD_VERSION}" \
             ng-packagr@"${NG_PACKAGR_VERSION}" \
             typescript@"${{ matrix.typescript-version }}"
 
@@ -175,6 +180,7 @@ jobs:
             '@angular/compiler-cli',
             '@angular/cli',
             '@angular-devkit/build-angular',
+            '@angular/build',
             'ng-packagr',
             'typescript',
           ];
