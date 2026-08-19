@@ -30,7 +30,12 @@ jobs:
     # synchronize event is attributed to the app's own bot actor, not
     # dependabot[bot] - this condition already prevents that push from
     # retriggering this workflow, so no separate loop-guard is needed.
-    if: github.event_name == 'workflow_dispatch' || (github.actor == 'dependabot[bot]' && github.event.pull_request.head.repo.full_name == github.repository)
+    # A manual run is restricted to branches: on main the bump would be pushed straight
+    # to main, and a version bump on main is exactly what makes build-and-release.yml
+    # publish - a dispatch would silently release.
+    if: >-
+      (github.event_name == 'workflow_dispatch' && github.ref_name != 'main') ||
+      (github.actor == 'dependabot[bot]' && github.event.pull_request.head.repo.full_name == github.repository)
     runs-on: ubuntu-latest
     steps:
       - name: Generate App token
