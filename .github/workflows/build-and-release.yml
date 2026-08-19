@@ -71,7 +71,7 @@ jobs:
 
       - name: Update or verify the third-party notices
         run: |
-          NOTICES="${LIBRARY_ROOT}/THIRD-PARTY-LICENSES.md ${LIBRARY_ROOT}/third-party-licenses"
+          NOTICES="${LIBRARY_ROOT}/THIRD-PARTY-LICENSES.md"
 
           if [ -z "$(git status --porcelain -- ${NOTICES})" ]; then
             echo "The third-party notices are already up to date."
@@ -230,7 +230,6 @@ jobs:
           test -f "${LIBRARY_DIST}/LICENSE"
           test -f "${LIBRARY_DIST}/CHANGELOG.md"
           test -f "${LIBRARY_DIST}/THIRD-PARTY-LICENSES.md"
-          test -d "${LIBRARY_DIST}/third-party-licenses"
           node -e "const p=require('./${LIBRARY_DIST}/package.json'); if (!p.name || !p.version) throw new Error('Missing package name or version'); if (p.private === true) throw new Error('Library package must not be private'); console.log(p.name + '@' + p.version)"
 
       - name: Create npm package tarball
@@ -324,7 +323,6 @@ jobs:
           npm run notices -- --out "${LIBRARY_ROOT}/THIRD-PARTY-LICENSES.generated.md"
           diff -u "${LIBRARY_ROOT}/THIRD-PARTY-LICENSES.md" "${LIBRARY_ROOT}/THIRD-PARTY-LICENSES.generated.md"
           rm -f "${LIBRARY_ROOT}/THIRD-PARTY-LICENSES.generated.md"
-          git diff --exit-code -- "${LIBRARY_ROOT}/third-party-licenses"
 
       - name: Build library
         if: steps.guard.outputs.release == 'true'
@@ -342,7 +340,6 @@ jobs:
           test -f "${LIBRARY_DIST}/LICENSE"
           test -f "${LIBRARY_DIST}/CHANGELOG.md"
           test -f "${LIBRARY_DIST}/THIRD-PARTY-LICENSES.md"
-          test -d "${LIBRARY_DIST}/third-party-licenses"
           node -e "const p=require('./${LIBRARY_DIST}/package.json'); if (!p.name || !p.version) throw new Error('Missing package name or version'); if (p.private === true) throw new Error('Library package must not be private'); console.log(p.name + '@' + p.version)"
 
       - name: Publish to npm (token bootstrap)
