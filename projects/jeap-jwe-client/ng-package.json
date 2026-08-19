@@ -10,7 +10,6 @@
   "assets": [
     "README.md",
     "CHANGELOG.md",
-    "THIRD-PARTY-LICENSES.md",
-    "third-party-licenses/**"
+    "THIRD-PARTY-LICENSES.md"
   ]
 }

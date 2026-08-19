@@ -10,8 +10,7 @@ to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 ### Changed
 
 - The third-party notices list the dependencies that are redistributed with the library
-  instead of the whole development toolchain, and carry their license texts as files under
-  `third-party-licenses/`, packaged into the npm tarball alongside the notice file.
+  instead of the whole development toolchain.
 - The dependency licenses are checked against a policy on every build. They were only ever
   listed before, so nothing verified that they were acceptable.
 
