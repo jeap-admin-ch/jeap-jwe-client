@@ -29,7 +29,7 @@
     "rxjs": "^7.4.0"
   },
   "dependencies": {
-    "jose": "6.2.2",
+    "jose": "6.2.9",
     "tslib": "^2.3.0"
   },
   "sideEffects": false
