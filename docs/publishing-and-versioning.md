@@ -126,11 +126,17 @@ record/idempotency marker, not a trigger, so no PAT is involved.
 
 ### Dependency updates release themselves
 
-Dependabot opens one grouped pull request per week for the workspace toolchain, for the
-library's own dependencies, and for the pinned GitHub Actions
-(`.github/dependabot.yml`). Each of those pull requests is completed automatically by
+Dependabot opens one grouped pull request per week for the npm dependencies and one for
+the pinned GitHub Actions (`.github/dependabot.yml`). The npm entry lists both manifests
+under `directories` — the workspace root and `projects/jeap-jwe-client` — so the whole
+week's npm updates arrive in a single pull request. That matters for the packages both
+files declare, `jose` and `tslib`: one entry per directory would open two pull requests
+for the same bump and, because of the automatic version bump below, release it twice.
+
+Each of those pull requests is completed automatically by
 `.github/workflows/dependabot-auto-bump.yml`, which performs step 1 of the flow above on
-the bot's behalf: it bumps the **patch** version, syncs `publiccode.yml`, adds an
+the bot's behalf: it bumps the **patch** version — a dependency update carries no API
+change, so it is never a minor bump — syncs `publiccode.yml`, adds an
 `Updated dependencies.` changelog entry and regenerates `THIRD-PARTY-LICENSES.md`.
 
 Merging such a pull request therefore publishes that patch release. Reviewing one means
