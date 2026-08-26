@@ -32,7 +32,7 @@ README.md                                              # Workspace-level project
 publiccode.yml                                          # publiccode.yml metadata (jEAP OSS distribution checklist)
 .github/workflows/build-and-release.yml                       # Single workflow: CI checks + release/publish on main
 .github/workflows/dependabot-auto-bump.yml                    # Patch bump + changelog + notices on Dependabot PRs
-.github/dependabot.yml                                        # Weekly grouped dependency updates
+.github/dependabot.yml                                        # Weekly grouped dependency updates (both npm manifests in one PR)
 
 docs/                                                  # Focused documentation files (repo root for jEAP docs pipeline + GitHub)
   getting-started.md                                   # Consumer setup
@@ -327,9 +327,12 @@ Keep one topic per documentation file.
 - Release tags use the format `vX.Y.Z` (for example `v1.0.0`) and are created automatically by CI.
 - The root package version is not the library version.
 - Dependency updates are versioned automatically: `.github/workflows/dependabot-auto-bump.yml`
-  bumps the **patch** version on every Dependabot pull request and updates `publiccode.yml`,
-  the changelog and the third-party notices with it. Do not bump those by hand on such a
-  branch; a bump that is already present is detected and left alone.
+  bumps the **patch** version — never the minor version — on every Dependabot pull request and
+  updates `publiccode.yml`, the changelog and the third-party notices with it. Do not bump those
+  by hand on such a branch; a bump that is already present is detected and left alone.
+- Dependabot covers the workspace root and the library manifest in one update entry
+  (`.github/dependabot.yml`, `directories`), so a dependency both files declare — `jose`, `tslib` —
+  arrives in a single grouped pull request and therefore in a single patch release.
 
 ## Releasing and publishing
 
